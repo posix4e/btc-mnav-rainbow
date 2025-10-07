@@ -230,7 +230,8 @@
             'rgba(255, 0, 0, 0.2)'       // Maximum Bubble Territory
         ];
 
-        const rainbowMultipliers = [0.5, 0.65, 0.85, 1.0, 1.3, 1.7, 2.2, 2.9, 3.8, 5.0];
+        // Rainbow band offsets in log space (from bottom to top)
+        const rainbowOffsets = [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8];
 
         async function loadData() {
         // Embedded data
@@ -281,21 +282,28 @@
         }
 
         function calculateRegression(data) {
-            // Convert dates to days since first data point
-            const firstDate = new Date(data[0].date);
-            const regressionData = data.map(d => {
-                const daysSince = (new Date(d.date) - firstDate) / (1000 * 60 * 60 * 24);
+            // Filter out any future data (beyond today)
+            const today = new Date();
+            const historicalData = data.filter(d => new Date(d.date) <= today);
+
+            // Convert dates to days since Bitcoin genesis block (Jan 3, 2009)
+            const genesisDate = new Date('2009-01-03');
+            const regressionData = historicalData.map(d => {
+                const daysSince = (new Date(d.date) - genesisDate) / (1000 * 60 * 60 * 24);
                 return [daysSince, Math.log10(d.price || d.mnavAdjustedPrice)];
             });
 
-            // Perform logarithmic regression
+            // Perform linear regression on log(price) vs time
             const result = regression.linear(regressionData);
 
             return {
                 equation: result.equation,
+                firstDate: genesisDate,
                 predict: (date) => {
-                    const daysSince = (new Date(date) - firstDate) / (1000 * 60 * 60 * 24);
-                    return Math.pow(10, result.predict(daysSince)[1]);
+                    const daysSince = (new Date(date) - genesisDate) / (1000 * 60 * 60 * 24);
+                    // Base regression line in log space
+                    const logPrice = result.equation[0] * daysSince + result.equation[1];
+                    return Math.pow(10, logPrice);
                 }
             };
         }
@@ -304,10 +312,12 @@
             const bands = [];
             const dates = data.map(d => d.date);
 
-            for (let i = 0; i < rainbowMultipliers.length; i++) {
+            for (let i = 0; i < rainbowOffsets.length; i++) {
                 const bandData = dates.map(date => {
-                    const baseValue = regression.predict(date);
-                    return baseValue * rainbowMultipliers[i];
+                    const daysSince = (new Date(date) - regression.firstDate) / (1000 * 60 * 60 * 24);
+                    // Calculate band value by adding offset in log space
+                    const logPrice = regression.equation[0] * daysSince + regression.equation[1] + rainbowOffsets[i];
+                    return Math.pow(10, logPrice);
                 });
 
                 if (i === 0) {
