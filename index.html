@@ -228,10 +228,11 @@
             <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <label style="font-weight: bold; color: #2d3748;">Trend Line Presets:</label>
-                    <button class="preset-btn active" data-preset="default">Default</button>
+                    <button class="preset-btn active" data-preset="default">Auto-Fit</button>
+                    <button class="preset-btn" data-preset="classic">Classic</button>
                     <button class="preset-btn" data-preset="conservative">Conservative</button>
                     <button class="preset-btn" data-preset="aggressive">Aggressive</button>
-                    <button class="preset-btn" data-preset="power">Power Law</button>
+                    <button class="preset-btn" data-preset="halving">Halving-Based</button>
                     <button class="preset-btn" data-preset="custom">Custom</button>
                 </div>
             </div>
@@ -326,31 +327,46 @@
             bandCount: 9
         };
 
-        // Preset configurations
+        // Preset configurations - these values are tuned for Bitcoin's actual price history
         const presetConfigs = {
             default: {
                 slope: null, // Will be calculated from data
                 intercept: null,
-                bandWidth: 0.3,
-                bandCount: 9
+                bandWidth: 0.35,
+                bandCount: 9,
+                startYear: 2014 // Start from when we have good data
+            },
+            classic: {
+                // Classic rainbow chart parameters (similar to blockchaincenter)
+                slope: 0.000495,
+                intercept: 2.9,
+                bandWidth: 0.32,
+                bandCount: 9,
+                startYear: 2012
             },
             conservative: {
-                slope: 0.00045,
-                intercept: -0.5,
-                bandWidth: 0.25,
-                bandCount: 9
+                // More conservative growth expectation
+                slope: 0.00042,
+                intercept: 3.1,
+                bandWidth: 0.28,
+                bandCount: 9,
+                startYear: 2014
             },
             aggressive: {
-                slope: 0.00065,
-                intercept: 0.3,
-                bandWidth: 0.35,
-                bandCount: 9
+                // More aggressive growth expectation
+                slope: 0.00055,
+                intercept: 2.8,
+                bandWidth: 0.38,
+                bandCount: 9,
+                startYear: 2014
             },
-            power: {
-                slope: 0.00058,
-                intercept: -0.2,
-                bandWidth: 0.32,
-                bandCount: 10
+            halving: {
+                // Adjusted for halving cycles
+                slope: 0.00048,
+                intercept: 2.95,
+                bandWidth: 0.35,
+                bandCount: 10,
+                startYear: 2013
             },
             custom: customSettings
         };
@@ -429,15 +445,17 @@
 
         function calculateRegression(data, usePreset = false) {
             const config = presetConfigs[currentPreset];
-            const genesisDate = new Date('2009-01-03');
+            // Use config start year if available, otherwise use 2010
+            const startYear = config.startYear || 2010;
+            const startDate = new Date(`${startYear}-01-01`);
 
             // If using preset with defined slope/intercept, use those
             if (usePreset && config.slope !== null && config.intercept !== null) {
                 return {
                     equation: [config.slope, config.intercept],
-                    firstDate: genesisDate,
+                    firstDate: startDate,
                     predict: (date) => {
-                        const daysSince = (new Date(date) - genesisDate) / (1000 * 60 * 60 * 24);
+                        const daysSince = (new Date(date) - startDate) / (1000 * 60 * 60 * 24);
                         const logPrice = config.slope * daysSince + config.intercept;
                         return Math.pow(10, logPrice);
                     }
@@ -446,10 +464,26 @@
 
             // Otherwise calculate from data
             const today = new Date();
-            const historicalData = data.filter(d => new Date(d.date) <= today);
+            const historicalData = data.filter(d => {
+                const date = new Date(d.date);
+                return date <= today && date >= startDate;
+            });
+
+            // Skip if not enough data
+            if (historicalData.length < 2) {
+                return {
+                    equation: [0.0005, 2.5],
+                    firstDate: startDate,
+                    predict: (date) => {
+                        const daysSince = (new Date(date) - startDate) / (1000 * 60 * 60 * 24);
+                        const logPrice = 0.0005 * daysSince + 2.5;
+                        return Math.pow(10, logPrice);
+                    }
+                };
+            }
 
             const regressionData = historicalData.map(d => {
-                const daysSince = (new Date(d.date) - genesisDate) / (1000 * 60 * 60 * 24);
+                const daysSince = (new Date(d.date) - startDate) / (1000 * 60 * 60 * 24);
                 return [daysSince, Math.log10(d.price || d.mnavAdjustedPrice)];
             });
 
@@ -457,9 +491,9 @@
 
             return {
                 equation: result.equation,
-                firstDate: genesisDate,
+                firstDate: startDate,
                 predict: (date) => {
-                    const daysSince = (new Date(date) - genesisDate) / (1000 * 60 * 60 * 24);
+                    const daysSince = (new Date(date) - startDate) / (1000 * 60 * 60 * 24);
                     const logPrice = result.equation[0] * daysSince + result.equation[1];
                     return Math.pow(10, logPrice);
                 }
@@ -570,6 +604,13 @@
                 };
             });
 
+            // Generate regression line data
+            const btcRegressionLine = btcData.map(d => btcRegression.predict(d.date));
+            const mnavRegressionLine = btcData.map(d => {
+                const mnavItem = mnavData.find(m => m.date === d.date);
+                return mnavItem ? mnavRegression.predict(d.date) : null;
+            });
+
             const datasets = [
                 // BTC Spot Price
                 {
@@ -595,6 +636,32 @@
                     pointRadius: 0,
                     tension: 0,
                     order: 2,
+                    spanGaps: false
+                },
+                // BTC Regression Line
+                {
+                    label: 'BTC Trend Line',
+                    data: btcRegressionLine,
+                    borderColor: 'rgba(255, 159, 64, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [10, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0,
+                    order: 3,
+                    spanGaps: false
+                },
+                // MNAV Regression Line
+                {
+                    label: 'MNAV Trend Line',
+                    data: mnavRegressionLine,
+                    borderColor: 'rgba(153, 102, 255, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [10, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0,
+                    order: 4,
                     spanGaps: false
                 }
             ];
