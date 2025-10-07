@@ -95,6 +95,28 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
+        .preset-btn {
+            background: white;
+            border: 2px solid #e2e8f0;
+            color: #4a5568;
+            padding: 6px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
         .chart-wrapper {
             position: relative;
             height: 600px;
@@ -202,6 +224,50 @@
             </div>
         </div>
 
+        <div class="controls" style="margin-top: 15px;">
+            <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <label style="font-weight: bold; color: #2d3748;">Trend Line Presets:</label>
+                    <button class="preset-btn active" data-preset="default">Default</button>
+                    <button class="preset-btn" data-preset="conservative">Conservative</button>
+                    <button class="preset-btn" data-preset="aggressive">Aggressive</button>
+                    <button class="preset-btn" data-preset="power">Power Law</button>
+                    <button class="preset-btn" data-preset="custom">Custom</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls" id="customControls" style="margin-top: 15px; display: none;">
+            <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
+                            Slope: <span id="slopeValue">0.00055</span>
+                        </label>
+                        <input type="range" id="slopeSlider" min="0.0001" max="0.001" step="0.00001" value="0.00055" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
+                            Intercept: <span id="interceptValue">0</span>
+                        </label>
+                        <input type="range" id="interceptSlider" min="-2" max="2" step="0.01" value="0" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
+                            Band Width: <span id="bandWidthValue">0.3</span>
+                        </label>
+                        <input type="range" id="bandWidthSlider" min="0.1" max="0.5" step="0.01" value="0.3" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
+                            Band Count: <span id="bandCountValue">9</span>
+                        </label>
+                        <input type="range" id="bandCountSlider" min="5" max="12" step="1" value="9" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-color" style="background: #FF0000;"></div>
@@ -252,6 +318,42 @@
         let chart = null;
         let btcData = [];
         let mnavData = [];
+        let currentPreset = 'default';
+        let customSettings = {
+            slope: 0.00055,
+            intercept: 0,
+            bandWidth: 0.3,
+            bandCount: 9
+        };
+
+        // Preset configurations
+        const presetConfigs = {
+            default: {
+                slope: null, // Will be calculated from data
+                intercept: null,
+                bandWidth: 0.3,
+                bandCount: 9
+            },
+            conservative: {
+                slope: 0.00045,
+                intercept: -0.5,
+                bandWidth: 0.25,
+                bandCount: 9
+            },
+            aggressive: {
+                slope: 0.00065,
+                intercept: 0.3,
+                bandWidth: 0.35,
+                bandCount: 9
+            },
+            power: {
+                slope: 0.00058,
+                intercept: -0.2,
+                bandWidth: 0.32,
+                bandCount: 10
+            },
+            custom: customSettings
+        };
 
         const rainbowColors = [
             'rgba(0, 0, 255, 0.2)',      // Fire Sale
@@ -325,19 +427,32 @@
             }
         }
 
-        function calculateRegression(data) {
-            // Filter out any future data (beyond today)
+        function calculateRegression(data, usePreset = false) {
+            const config = presetConfigs[currentPreset];
+            const genesisDate = new Date('2009-01-03');
+
+            // If using preset with defined slope/intercept, use those
+            if (usePreset && config.slope !== null && config.intercept !== null) {
+                return {
+                    equation: [config.slope, config.intercept],
+                    firstDate: genesisDate,
+                    predict: (date) => {
+                        const daysSince = (new Date(date) - genesisDate) / (1000 * 60 * 60 * 24);
+                        const logPrice = config.slope * daysSince + config.intercept;
+                        return Math.pow(10, logPrice);
+                    }
+                };
+            }
+
+            // Otherwise calculate from data
             const today = new Date();
             const historicalData = data.filter(d => new Date(d.date) <= today);
 
-            // Convert dates to days since Bitcoin genesis block (Jan 3, 2009)
-            const genesisDate = new Date('2009-01-03');
             const regressionData = historicalData.map(d => {
                 const daysSince = (new Date(d.date) - genesisDate) / (1000 * 60 * 60 * 24);
                 return [daysSince, Math.log10(d.price || d.mnavAdjustedPrice)];
             });
 
-            // Perform linear regression on log(price) vs time
             const result = regression.linear(regressionData);
 
             return {
@@ -345,7 +460,6 @@
                 firstDate: genesisDate,
                 predict: (date) => {
                     const daysSince = (new Date(date) - genesisDate) / (1000 * 60 * 60 * 24);
-                    // Base regression line in log space
                     const logPrice = result.equation[0] * daysSince + result.equation[1];
                     return Math.pow(10, logPrice);
                 }
@@ -353,14 +467,24 @@
         }
 
         function generateRainbowBands(data, regression) {
+            const config = presetConfigs[currentPreset];
+            const bandCount = config.bandCount;
+            const bandWidth = config.bandWidth;
+
             const bands = [];
             const dates = data.map(d => d.date);
 
-            for (let i = 0; i < rainbowOffsets.length; i++) {
+            // Generate band offsets based on configuration
+            const bandOffsets = [];
+            for (let i = 0; i < bandCount; i++) {
+                const offset = -bandWidth * (bandCount - 1) / 2 + i * bandWidth;
+                bandOffsets.push(offset);
+            }
+
+            for (let i = 0; i < bandOffsets.length; i++) {
                 const bandData = dates.map(date => {
                     const daysSince = (new Date(date) - regression.firstDate) / (1000 * 60 * 60 * 24);
-                    // Calculate band value by adding offset in log space
-                    const logPrice = regression.equation[0] * daysSince + regression.equation[1] + rainbowOffsets[i];
+                    const logPrice = regression.equation[0] * daysSince + regression.equation[1] + bandOffsets[i];
                     return Math.pow(10, logPrice);
                 });
 
@@ -377,11 +501,13 @@
                     });
                 }
 
+                // Map colors based on band position
+                const colorIndex = Math.floor(i * rainbowColors.length / bandCount);
                 bands.push({
                     label: '',
                     data: bandData,
                     borderColor: 'transparent',
-                    backgroundColor: rainbowColors[Math.min(i, rainbowColors.length - 1)],
+                    backgroundColor: rainbowColors[Math.min(colorIndex, rainbowColors.length - 1)],
                     fill: i === 0 ? false : '-1',
                     pointRadius: 0,
                     tension: 0,
@@ -392,15 +518,22 @@
             return bands;
         }
 
+        function rebuildChart() {
+            if (chart) {
+                chart.destroy();
+            }
+            createChart();
+        }
+
         function createChart() {
             const ctx = document.getElementById('rainbowChart').getContext('2d');
 
-            // Calculate regressions
-            const btcRegression = calculateRegression(btcData);
+            // Calculate regressions (use preset for BTC if not default)
+            const btcRegression = calculateRegression(btcData, currentPreset !== 'default');
             const mnavRegression = calculateRegression(mnavData.map(d => ({
                 date: d.date,
                 price: d.mnavAdjustedPrice
-            })));
+            })), currentPreset !== 'default');
 
             // Generate rainbow bands
             const btcRainbowBands = generateRainbowBands(btcData, btcRegression);
@@ -641,6 +774,75 @@
                     chart.update();
                 });
             });
+
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    currentPreset = this.dataset.preset;
+
+                    // Show/hide custom controls
+                    const customControls = document.getElementById('customControls');
+                    if (currentPreset === 'custom') {
+                        customControls.style.display = 'block';
+                        updateCustomValues();
+                    } else {
+                        customControls.style.display = 'none';
+                    }
+
+                    rebuildChart();
+                });
+            });
+
+            // Custom sliders
+            document.getElementById('slopeSlider').addEventListener('input', function() {
+                customSettings.slope = parseFloat(this.value);
+                document.getElementById('slopeValue').textContent = this.value;
+                if (currentPreset === 'custom') {
+                    presetConfigs.custom = customSettings;
+                    rebuildChart();
+                }
+            });
+
+            document.getElementById('interceptSlider').addEventListener('input', function() {
+                customSettings.intercept = parseFloat(this.value);
+                document.getElementById('interceptValue').textContent = this.value;
+                if (currentPreset === 'custom') {
+                    presetConfigs.custom = customSettings;
+                    rebuildChart();
+                }
+            });
+
+            document.getElementById('bandWidthSlider').addEventListener('input', function() {
+                customSettings.bandWidth = parseFloat(this.value);
+                document.getElementById('bandWidthValue').textContent = this.value;
+                if (currentPreset === 'custom') {
+                    presetConfigs.custom = customSettings;
+                    rebuildChart();
+                }
+            });
+
+            document.getElementById('bandCountSlider').addEventListener('input', function() {
+                customSettings.bandCount = parseInt(this.value);
+                document.getElementById('bandCountValue').textContent = this.value;
+                if (currentPreset === 'custom') {
+                    presetConfigs.custom = customSettings;
+                    rebuildChart();
+                }
+            });
+        }
+
+        function updateCustomValues() {
+            document.getElementById('slopeSlider').value = customSettings.slope;
+            document.getElementById('slopeValue').textContent = customSettings.slope;
+            document.getElementById('interceptSlider').value = customSettings.intercept;
+            document.getElementById('interceptValue').textContent = customSettings.intercept;
+            document.getElementById('bandWidthSlider').value = customSettings.bandWidth;
+            document.getElementById('bandWidthValue').textContent = customSettings.bandWidth;
+            document.getElementById('bandCountSlider').value = customSettings.bandCount;
+            document.getElementById('bandCountValue').textContent = customSettings.bandCount;
         }
 
         function updateStats() {
