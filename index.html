@@ -57,6 +57,7 @@
                     <button class="preset-btn" data-preset="conservative">Conservative</button>
                     <button class="preset-btn" data-preset="aggressive">Aggressive</button>
                     <button class="preset-btn" data-preset="halving">Halving-Based</button>
+                    <button class="preset-btn" data-preset="calibrated">📊 Calibrated</button>
                     <button class="preset-btn" data-preset="custom">Custom</button>
                 </div>
             </div>
@@ -64,6 +65,16 @@
 
         <div class="controls" id="customControls" style="margin-top: 15px; display: none;">
             <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
+                <div style="margin-bottom: 15px; padding: 10px; background: #e2e8f0; border-radius: 5px;">
+                    <strong>Calibration Guide:</strong><br>
+                    <small>
+                        🔴 2017 Dec: $20k → Should be RED (top)<br>
+                        🔵 2018 Dec: $3.5k → Should be BLUE (bottom)<br>
+                        🟠 2021 Nov: $69k → Should be ORANGE/RED<br>
+                        🟢 2022 Nov: $16k → Should be BLUE/GREEN<br>
+                        🟡 2024 Current → Should be GREEN/YELLOW (middle)
+                    </small>
+                </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">

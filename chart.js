@@ -52,6 +52,18 @@ const presetConfigs = {
         bandCount: 10,
         startYear: 2012
     },
+    calibrated: {
+        // Calibrated to match historical tops and bottoms
+        // 2017 peak (~$20k) should be in red zone (top)
+        // 2018-2019 low (~$3.5k) should be in blue zone (bottom)
+        // 2021 peak (~$69k) should be in orange/red zone
+        // 2022 low (~$16k) should be in blue/green zone
+        slope: 0.000585,  // Tuned for Bitcoin's actual growth rate
+        intercept: 2.06,   // Positions bands to match historical cycles
+        bandWidth: 0.343,  // Width that captures full volatility range
+        bandCount: 9,
+        startYear: 2011
+    },
     custom: customSettings
 };
 
