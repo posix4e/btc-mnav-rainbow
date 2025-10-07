@@ -352,6 +352,12 @@
             const btcRainbowBands = generateRainbowBands(btcData, btcRegression);
             const mnavRainbowBands = generateRainbowBands(mnavData, mnavRegression);
 
+            // Create aligned data for MSTR MNAV (with null values before 2022)
+            const mnavAlignedData = btcData.map(btcItem => {
+                const mnavItem = mnavData.find(m => m.date === btcItem.date);
+                return mnavItem ? mnavItem.mnavAdjustedPrice : null;
+            });
+
             const datasets = [
                 // BTC Spot Price
                 {
@@ -363,19 +369,21 @@
                     fill: false,
                     pointRadius: 0,
                     tension: 0,
-                    order: 1
+                    order: 1,
+                    spanGaps: false
                 },
                 // MSTR MNAV-Adjusted Price
                 {
                     label: 'MSTR MNAV-Adjusted Price',
-                    data: mnavData.map(d => d.mnavAdjustedPrice),
+                    data: mnavAlignedData,
                     borderColor: 'rgb(153, 102, 255)',
                     backgroundColor: 'rgba(153, 102, 255, 0.1)',
                     borderWidth: 3,
                     fill: false,
                     pointRadius: 0,
                     tension: 0,
-                    order: 2
+                    order: 2,
+                    spanGaps: false
                 }
             ];
 
@@ -385,8 +393,15 @@
                 datasets.push(band);
             });
 
-            mnavRainbowBands.forEach(band => {
+            // Align MNAV rainbow bands with BTC dates (null before 2022)
+            mnavRainbowBands.forEach((band, idx) => {
+                const alignedData = btcData.map(btcItem => {
+                    const mnavIndex = mnavData.findIndex(m => m.date === btcItem.date);
+                    return mnavIndex !== -1 ? band.data[mnavIndex] : null;
+                });
+                band.data = alignedData;
                 band.hidden = true;
+                band.spanGaps = false;
                 datasets.push(band);
             });
 
