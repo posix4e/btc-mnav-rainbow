@@ -583,5 +583,7 @@ function updateStats() {
     document.getElementById('stats').innerHTML = statsHTML;
 }
 
-// Load data on page load
-loadData();
+// Load data when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+});
