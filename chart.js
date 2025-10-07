@@ -8,6 +8,7 @@ let customSettings = {
     bandWidth: 0.39,
     bandCount: 9
 };
+let pendingCustomSettings = { ...customSettings };
 
 // Preset configurations - these values are tuned for Bitcoin's actual price history
 const presetConfigs = {
@@ -508,42 +509,61 @@ function setupToggles() {
         });
     });
 
-    // Custom sliders
+    // Track pending changes
+    let pendingCustomSettings = { ...customSettings };
+
+    // Custom sliders - only update display values
     document.getElementById('slopeSlider').addEventListener('input', function() {
-        customSettings.slope = parseFloat(this.value);
+        pendingCustomSettings.slope = parseFloat(this.value);
         document.getElementById('slopeValue').textContent = this.value;
         if (currentPreset === 'custom') {
-            presetConfigs.custom = customSettings;
-            rebuildChart();
+            showPendingChanges();
         }
     });
 
     document.getElementById('interceptSlider').addEventListener('input', function() {
-        customSettings.intercept = parseFloat(this.value);
+        pendingCustomSettings.intercept = parseFloat(this.value);
         document.getElementById('interceptValue').textContent = this.value;
         if (currentPreset === 'custom') {
-            presetConfigs.custom = customSettings;
-            rebuildChart();
+            showPendingChanges();
         }
     });
 
     document.getElementById('bandWidthSlider').addEventListener('input', function() {
-        customSettings.bandWidth = parseFloat(this.value);
+        pendingCustomSettings.bandWidth = parseFloat(this.value);
         document.getElementById('bandWidthValue').textContent = this.value;
         if (currentPreset === 'custom') {
-            presetConfigs.custom = customSettings;
-            rebuildChart();
+            showPendingChanges();
         }
     });
 
     document.getElementById('bandCountSlider').addEventListener('input', function() {
-        customSettings.bandCount = parseInt(this.value);
+        pendingCustomSettings.bandCount = parseInt(this.value);
         document.getElementById('bandCountValue').textContent = this.value;
         if (currentPreset === 'custom') {
-            presetConfigs.custom = customSettings;
-            rebuildChart();
+            showPendingChanges();
         }
     });
+
+    // Recompute button
+    document.getElementById('recomputeBtn').addEventListener('click', function() {
+        if (currentPreset === 'custom') {
+            customSettings = { ...pendingCustomSettings };
+            presetConfigs.custom = customSettings;
+            rebuildChart();
+            hidePendingChanges();
+        }
+    });
+}
+
+function showPendingChanges() {
+    const indicator = document.getElementById('pendingChanges');
+    if (indicator) indicator.style.display = 'inline';
+}
+
+function hidePendingChanges() {
+    const indicator = document.getElementById('pendingChanges');
+    if (indicator) indicator.style.display = 'none';
 }
 
 function updateCustomValues() {
@@ -555,6 +575,9 @@ function updateCustomValues() {
     document.getElementById('bandWidthValue').textContent = customSettings.bandWidth;
     document.getElementById('bandCountSlider').value = customSettings.bandCount;
     document.getElementById('bandCountValue').textContent = customSettings.bandCount;
+    // Reset pending settings when updating
+    pendingCustomSettings = { ...customSettings };
+    hidePendingChanges();
 }
 
 function updateStats() {
