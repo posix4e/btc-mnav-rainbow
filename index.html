@@ -243,15 +243,15 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Slope: <span id="slopeValue">0.00055</span>
+                            Slope: <span id="slopeValue">0.00063</span>
                         </label>
-                        <input type="range" id="slopeSlider" min="0.0001" max="0.001" step="0.00001" value="0.00055" style="width: 100%;">
+                        <input type="range" id="slopeSlider" min="0.0003" max="0.0010" step="0.00001" value="0.00063" style="width: 100%;">
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Intercept: <span id="interceptValue">0</span>
+                            Intercept: <span id="interceptValue">1.85</span>
                         </label>
-                        <input type="range" id="interceptSlider" min="-2" max="2" step="0.01" value="0" style="width: 100%;">
+                        <input type="range" id="interceptSlider" min="0" max="4" step="0.01" value="1.85" style="width: 100%;">
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
@@ -321,9 +321,9 @@
         let mnavData = [];
         let currentPreset = 'default';
         let customSettings = {
-            slope: 0.00055,
-            intercept: 0,
-            bandWidth: 0.3,
+            slope: 0.00063,
+            intercept: 1.85,
+            bandWidth: 0.39,
             bandCount: 9
         };
 
@@ -337,36 +337,37 @@
                 startYear: 2014 // Start from when we have good data
             },
             classic: {
-                // Classic rainbow chart parameters (similar to blockchaincenter)
-                slope: 0.000495,
-                intercept: 2.9,
+                // Classic rainbow chart parameters (tuned to match historical cycles)
+                // Price should oscillate through all bands over market cycles
+                slope: 0.000631,  // Steeper slope for long-term growth
+                intercept: 1.85,  // Much lower intercept to center the bands
+                bandWidth: 0.39,  // Wider bands to capture volatility
+                bandCount: 9,
+                startYear: 2011  // Start from early Bitcoin data
+            },
+            conservative: {
+                // More conservative growth expectation
+                slope: 0.00055,
+                intercept: 2.0,
                 bandWidth: 0.32,
                 bandCount: 9,
                 startYear: 2012
             },
-            conservative: {
-                // More conservative growth expectation
-                slope: 0.00042,
-                intercept: 3.1,
-                bandWidth: 0.28,
-                bandCount: 9,
-                startYear: 2014
-            },
             aggressive: {
                 // More aggressive growth expectation
-                slope: 0.00055,
-                intercept: 2.8,
-                bandWidth: 0.38,
+                slope: 0.00070,
+                intercept: 1.7,
+                bandWidth: 0.42,
                 bandCount: 9,
-                startYear: 2014
+                startYear: 2011
             },
             halving: {
                 // Adjusted for halving cycles
-                slope: 0.00048,
-                intercept: 2.95,
-                bandWidth: 0.35,
+                slope: 0.00062,
+                intercept: 1.9,
+                bandWidth: 0.38,
                 bandCount: 10,
-                startYear: 2013
+                startYear: 2012
             },
             custom: customSettings
         };
