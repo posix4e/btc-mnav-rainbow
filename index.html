@@ -6,6 +6,7 @@
     <title>Bitcoin Rainbow Chart: Spot vs MSTR MNAV</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
     <style>
         * {
@@ -71,6 +72,27 @@
             width: 20px;
             height: 20px;
             cursor: pointer;
+        }
+
+        .time-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            margin: 0 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .time-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .time-btn.active {
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         .chart-wrapper {
@@ -165,6 +187,19 @@
                 <input type="checkbox" id="showMNAVRainbow">
                 <label for="showMNAVRainbow">MNAV Rainbow Bands</label>
             </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showHalvings" checked>
+                <label for="showHalvings">Halving Lines</label>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 15px;">
+            <div class="toggle-group" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5px;">
+                <button class="time-btn" data-range="1Y">1Y</button>
+                <button class="time-btn" data-range="3Y">3Y</button>
+                <button class="time-btn" data-range="5Y">5Y</button>
+                <button class="time-btn active" data-range="ALL">All Time</button>
+            </div>
         </div>
 
         <div class="legend">
@@ -232,6 +267,15 @@
 
         // Rainbow band offsets in log space (from bottom to top)
         const rainbowOffsets = [-0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8];
+
+        // Bitcoin halving dates
+        const halvingDates = [
+            { date: '2012-11-28', label: '1st Halving', blockReward: '25 BTC' },
+            { date: '2016-07-09', label: '2nd Halving', blockReward: '12.5 BTC' },
+            { date: '2020-05-11', label: '3rd Halving', blockReward: '6.25 BTC' },
+            { date: '2024-04-19', label: '4th Halving', blockReward: '3.125 BTC' },
+            { date: '2028-04-01', label: '5th Halving (Est.)', blockReward: '1.5625 BTC' }
+        ];
 
         async function loadData() {
         // Embedded data
@@ -368,6 +412,31 @@
                 return mnavItem ? mnavItem.mnavAdjustedPrice : null;
             });
 
+            // Create halving annotations
+            const halvingAnnotations = {};
+            halvingDates.forEach((halving, index) => {
+                halvingAnnotations[`halving${index}`] = {
+                    type: 'line',
+                    borderColor: 'rgba(255, 255, 255, 0.8)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    label: {
+                        content: halving.label,
+                        enabled: true,
+                        position: 'start',
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        color: 'white',
+                        font: {
+                            size: 11
+                        },
+                        rotation: 270,
+                        yAdjust: -60
+                    },
+                    scaleID: 'x',
+                    value: halving.date
+                };
+            });
+
             const datasets = [
                 // BTC Spot Price
                 {
@@ -429,6 +498,9 @@
                         intersect: false
                     },
                     plugins: {
+                        annotation: {
+                            annotations: halvingAnnotations
+                        },
                         legend: {
                             display: true,
                             position: 'top',
@@ -521,6 +593,53 @@
                     }
                 }
                 chart.update();
+            });
+
+            document.getElementById('showHalvings').addEventListener('change', function(e) {
+                Object.keys(chart.options.plugins.annotation.annotations).forEach(key => {
+                    if (key.startsWith('halving')) {
+                        chart.options.plugins.annotation.annotations[key].display = e.target.checked;
+                    }
+                });
+                chart.update();
+            });
+
+            // Time range buttons
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    const range = this.dataset.range;
+                    const today = new Date();
+                    let minDate = null;
+
+                    switch(range) {
+                        case '1Y':
+                            minDate = new Date(today);
+                            minDate.setFullYear(minDate.getFullYear() - 1);
+                            break;
+                        case '3Y':
+                            minDate = new Date(today);
+                            minDate.setFullYear(minDate.getFullYear() - 3);
+                            break;
+                        case '5Y':
+                            minDate = new Date(today);
+                            minDate.setFullYear(minDate.getFullYear() - 5);
+                            break;
+                        case 'ALL':
+                        default:
+                            minDate = null;
+                    }
+
+                    if (minDate) {
+                        chart.options.scales.x.min = minDate.toISOString().split('T')[0];
+                    } else {
+                        delete chart.options.scales.x.min;
+                    }
+
+                    chart.update();
+                });
             });
         }
 
