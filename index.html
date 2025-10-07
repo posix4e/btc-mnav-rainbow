@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+    <script src="chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -137,9 +138,6 @@
 
         <div class="stats" id="stats"></div>
     </div>
-
-    <script>
-        let chart = null;
         let btcData = [];
         let mnavData = [];
         let currentPreset = 'default';
@@ -762,8 +760,5 @@
             document.getElementById('stats').innerHTML = statsHTML;
         }
 
-        // Load data on page load
-        loadData();
-    </script>
 </body>
 </html>
