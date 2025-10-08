@@ -436,6 +436,7 @@ function setupToggles() {
             const range = this.dataset.range;
             const today = new Date();
             let minDate = null;
+            let maxDate = today; // Default to today to avoid showing future data
 
             switch(range) {
                 case '1Y':
@@ -453,12 +454,19 @@ function setupToggles() {
                 case 'ALL':
                 default:
                     minDate = null;
+                    maxDate = null; // Show all data including future for ALL
             }
 
             if (minDate) {
                 chart.options.scales.x.min = minDate.toISOString().split('T')[0];
             } else {
                 delete chart.options.scales.x.min;
+            }
+
+            if (maxDate) {
+                chart.options.scales.x.max = maxDate.toISOString().split('T')[0];
+            } else {
+                delete chart.options.scales.x.max;
             }
 
             chart.update();
