@@ -1,7 +1,7 @@
 let chart = null;
 let btcData = [];
 let mnavData = [];
-let currentPreset = 'default';
+let currentPreset = 'logarithmic';
 let customSettings = {
     slope: 0.00063,
     intercept: 1.85,
@@ -10,59 +10,25 @@ let customSettings = {
 };
 let pendingCustomSettings = { ...customSettings };
 
-// Preset configurations - these values are tuned for Bitcoin's actual price history
+// Preset configurations matching Blockchain Center rainbow chart
 const presetConfigs = {
-    default: {
-        slope: null, // Will be calculated from data
-        intercept: null,
-        bandWidth: 0.35,
-        bandCount: 9,
-        startYear: 2014 // Start from when we have good data
-    },
-    classic: {
-        // Classic rainbow chart parameters (tuned to match historical cycles)
-        // Price should oscillate through all bands over market cycles
-        slope: 0.000631,  // Steeper slope for long-term growth
-        intercept: 1.85,  // Much lower intercept to center the bands
-        bandWidth: 0.39,  // Wider bands to capture volatility
-        bandCount: 9,
-        startYear: 2011  // Start from early Bitcoin data
-    },
-    conservative: {
-        // More conservative growth expectation
-        slope: 0.00055,
-        intercept: 2.0,
-        bandWidth: 0.32,
-        bandCount: 9,
-        startYear: 2012
-    },
-    aggressive: {
-        // More aggressive growth expectation
-        slope: 0.00070,
-        intercept: 1.7,
-        bandWidth: 0.42,
+    logarithmic: {
+        // Logarithmic regression (non-linear, long-term fit)
+        // This is the default rainbow chart most people know
+        slope: 0.000631,
+        intercept: 1.85,
+        bandWidth: 0.39,
         bandCount: 9,
         startYear: 2011
     },
-    halving: {
-        // Adjusted for halving cycles
-        slope: 0.00062,
-        intercept: 1.9,
-        bandWidth: 0.38,
-        bandCount: 10,
-        startYear: 2012
-    },
-    calibrated: {
-        // Calibrated to match historical tops and bottoms
-        // 2017 peak (~$20k) should be in red zone (top)
-        // 2018-2019 low (~$3.5k) should be in blue zone (bottom)
-        // 2021 peak (~$69k) should be in orange/red zone
-        // 2022 low (~$16k) should be in blue/green zone
-        slope: 0.000585,  // Tuned for Bitcoin's actual growth rate
-        intercept: 2.06,   // Positions bands to match historical cycles
-        bandWidth: 0.343,  // Width that captures full volatility range
+    linear: {
+        // Linear regression (straight line fit in log space)
+        // More conservative, based on recent data
+        slope: 0.000585,
+        intercept: 2.06,
+        bandWidth: 0.343,
         bandCount: 9,
-        startYear: 2011
+        startYear: 2014
     },
     custom: customSettings
 };
@@ -220,12 +186,12 @@ function rebuildChart() {
 function createChart() {
     const ctx = document.getElementById('rainbowChart').getContext('2d');
 
-    // Calculate regressions (use preset for BTC if not default)
-    const btcRegression = calculateRegression(btcData, currentPreset !== 'default');
+    // Calculate regressions (always use preset values)
+    const btcRegression = calculateRegression(btcData, true);
     const mnavRegression = calculateRegression(mnavData.map(d => ({
         date: d.date,
         price: d.mnavAdjustedPrice
-    })), currentPreset !== 'default');
+    })), true);
 
     // Generate rainbow bands
     const btcRainbowBands = generateRainbowBands(btcData, btcRegression);
