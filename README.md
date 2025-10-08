@@ -2,6 +2,8 @@
 
 A visualization tool comparing Bitcoin's spot price with MicroStrategy's MNAV-adjusted price using the rainbow chart model.
 
+🌐 **Live Demo: [https://posix4e.github.io/btc-mnav-rainbow/](https://posix4e.github.io/btc-mnav-rainbow/)**
+
 ## Features
 
 - 🌈 Rainbow bands showing market cycles (Fire Sale → Maximum Bubble)
