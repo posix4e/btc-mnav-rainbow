@@ -82,10 +82,19 @@ Edit `update-data.js` to add remote data source URLs if needed.
 
 ## GitHub Pages Deployment
 
-1. Push to GitHub (data.js is git-ignored)
-2. Run `npm run update-data` locally
-3. Manually commit data.js for GitHub Pages, or
-4. Set up GitHub Actions to generate data.js
+The site is automatically built and deployed to GitHub Pages via GitHub Actions. The workflow:
+
+1. **Builds the site** - Installs npm dependencies and generates `data.js` from CSV files
+2. **Deploys to Pages** - Publishes the complete site to GitHub Pages
+
+### When it runs:
+- ✅ Automatically on every push to `main` branch
+- 🎯 On manual trigger from Actions tab
+
+### Important:
+- `data.js` is git-ignored locally but generated fresh during each deployment
+- CSV data files must be committed to the repository
+- No need to manually commit `data.js` - it's built automatically!
 
 ## License
 
