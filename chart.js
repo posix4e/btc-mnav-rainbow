@@ -15,9 +15,10 @@ const presetConfigs = {
     logarithmic: {
         // Logarithmic regression (non-linear, long-term fit)
         // This is the default rainbow chart most people know
-        slope: 0.000631,
-        intercept: 1.85,
-        bandWidth: 0.39,
+        // Adjusted to better match Blockchain Center's visual appearance
+        slope: 0.00058,
+        intercept: 2.15,
+        bandWidth: 0.32,
         bandCount: 9,
         startYear: 2011
     },
