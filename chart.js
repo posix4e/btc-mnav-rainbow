@@ -13,21 +13,22 @@ let pendingCustomSettings = { ...customSettings };
 // Preset configurations matching Blockchain Center rainbow chart
 const presetConfigs = {
     logarithmic: {
-        // Logarithmic regression (non-linear, long-term fit)
-        // This is the default rainbow chart most people know
-        // Adjusted to better match Blockchain Center's visual appearance
-        slope: 0.0003,  // Much flatter slope for nearly horizontal bands
-        intercept: 2.9,  // Higher intercept to position bands correctly
-        bandWidth: 0.28, // Tighter bands
+        // Power law regression (non-linear, long-term fit)
+        // Matches the Blockchain Center "Logarithmic Regression" model
+        // These values are calibrated to match their visual appearance
+        slope: 0.0004783,  // Power law growth coefficient
+        intercept: 2.5829,  // Starting point in log space
+        bandWidth: 0.33,    // Band spacing in log space
         bandCount: 9,
         startYear: 2011
     },
     linear: {
         // Linear regression (straight line fit in log space)
-        // More conservative, based on recent data
-        slope: 0.000585,
-        intercept: 2.06,
-        bandWidth: 0.343,
+        // Matches the Blockchain Center "Linear Regression" model
+        // More conservative, typically uses data from 2014 onwards
+        slope: 0.0005273,  // Linear growth in log space
+        intercept: 2.3021,  // Y-intercept in log space
+        bandWidth: 0.33,    // Same band spacing as logarithmic
         bandCount: 9,
         startYear: 2014
     },
