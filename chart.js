@@ -15,9 +15,9 @@ const presetConfigs = {
     logarithmic: {
         // Power law regression (non-linear, long-term fit)
         // Matches the Blockchain Center "Logarithmic Regression" model
-        // These values are calibrated to match their visual appearance
-        slope: 0.0004783,  // Power law growth coefficient
-        intercept: 2.5829,  // Starting point in log space
+        // Power law: price = 10^(intercept) * days^slope
+        slope: 5.82,        // Power law exponent (how fast it curves up)
+        intercept: -17.01,  // Log of the multiplier coefficient
         bandWidth: 0.33,    // Band spacing in log space
         bandCount: 9,
         startYear: 2011
@@ -81,7 +81,19 @@ function calculateRegression(data, usePreset = false) {
             firstDate: startDate,
             predict: (date) => {
                 const daysSince = (new Date(date) - startDate) / (1000 * 60 * 60 * 24);
-                const logPrice = config.slope * daysSince + config.intercept;
+                let logPrice;
+
+                if (currentPreset === 'logarithmic') {
+                    // Power law: price = a * (days ^ b)
+                    // In log space: log(price) = log(a) + b * log(days)
+                    // This creates the characteristic curve
+                    const safeDays = Math.max(1, daysSince);
+                    logPrice = config.intercept + config.slope * Math.log10(safeDays);
+                } else {
+                    // Linear regression: straight line in log space
+                    logPrice = config.slope * daysSince + config.intercept;
+                }
+
                 return Math.pow(10, logPrice);
             }
         };
