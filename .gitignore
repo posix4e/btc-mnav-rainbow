@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Generated files
+data.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Optional: Keep CSV files out of repo if they're frequently updated
+# *.csv
+
+# Python artifacts (if any remain)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/

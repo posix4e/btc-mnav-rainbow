@@ -1,0 +1,35 @@
+// Bitcoin Rainbow Chart Data
+// This is an example file showing the expected data structure
+// Run 'npm run update-data' to generate the actual data.js file
+
+const btcHistoricalData = [
+  {
+    "date": "2014-09-01",
+    "price": 386.9440002441406
+  },
+  {
+    "date": "2014-10-01",
+    "price": 338.3210144042969
+  }
+  // ... more data
+];
+
+const mnavHistoricalData = [
+  {
+    "date": "2022-01-01",
+    "spotPrice": 38483.125,
+    "mnav": 0.25,
+    "mnavAdjustedPrice": 9596.08,
+    "btcHoldings": 125051.0,
+    "marketCap": 1200000000.0
+  },
+  {
+    "date": "2022-02-01",
+    "spotPrice": 43193.234375,
+    "mnav": 0.93,
+    "mnavAdjustedPrice": 39983.69,
+    "btcHoldings": 125051.0,
+    "marketCap": 5000000000.0
+  }
+  // ... more data
+];

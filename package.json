@@ -1,0 +1,30 @@
+{
+  "name": "btc-mnav-rainbow",
+  "version": "1.0.0",
+  "description": "Bitcoin Rainbow Chart with MSTR MNAV comparison",
+  "main": "index.html",
+  "scripts": {
+    "update-data": "node update-data.js",
+    "serve": "npx http-server -p 8080 -c-1",
+    "dev": "npx http-server -p 8080 -c-1"
+  },
+  "keywords": [
+    "bitcoin",
+    "btc",
+    "rainbow-chart",
+    "mstr",
+    "mnav",
+    "cryptocurrency",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "csv-parse": "^5.5.0",
+    "http-server": "^14.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/posix4e/btc-mnav-rainbow.git"
+  }
+}
