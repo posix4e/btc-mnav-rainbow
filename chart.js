@@ -16,9 +16,9 @@ const presetConfigs = {
         // Power law regression (non-linear, long-term fit)
         // Matches the Blockchain Center "Logarithmic Regression" model
         // Power law: price = 10^(intercept) * days^slope
-        slope: 0.51,        // Power law exponent (how fast it curves up)
-        intercept: 0.8,     // Log of the multiplier coefficient
-        bandWidth: 0.33,    // Band spacing in log space
+        slope: 0.58,        // Power law exponent (how fast it curves up)
+        intercept: -0.8,    // Log of the multiplier coefficient
+        bandWidth: 0.32,    // Band spacing in log space
         bandCount: 9,
         startYear: 2011
     },
