@@ -16,8 +16,8 @@ const presetConfigs = {
         // Power law regression (non-linear, long-term fit)
         // Matches the Blockchain Center "Logarithmic Regression" model
         // Power law: price = 10^(intercept) * days^slope
-        slope: 5.82,        // Power law exponent (how fast it curves up)
-        intercept: -17.01,  // Log of the multiplier coefficient
+        slope: 0.51,        // Power law exponent (how fast it curves up)
+        intercept: 0.8,     // Log of the multiplier coefficient
         bandWidth: 0.33,    // Band spacing in log space
         bandCount: 9,
         startYear: 2011
@@ -154,9 +154,12 @@ function generateRainbowBands(data, regression) {
 
     for (let i = 0; i < bandOffsets.length; i++) {
         const bandData = dates.map(date => {
-            const daysSince = (new Date(date) - regression.firstDate) / (1000 * 60 * 60 * 24);
-            const logPrice = regression.equation[0] * daysSince + regression.equation[1] + bandOffsets[i];
-            return Math.pow(10, logPrice);
+            // Use the regression's predict function to get the base price
+            const basePrice = regression.predict(date);
+            // Apply band offset in log space
+            const logBasePrice = Math.log10(basePrice);
+            const logBandPrice = logBasePrice + bandOffsets[i];
+            return Math.pow(10, logBandPrice);
         });
 
         if (i === 0) {
