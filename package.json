@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "update-data": "node update-data.js",
+    "fetch-share-classes": "node scripts/fetch-share-classes.js",
     "serve": "npx http-server -p 8080 -c-1",
     "dev": "npx http-server -p 8080 -c-1",
     "compare": "node scripts/compare-screenshots.js"

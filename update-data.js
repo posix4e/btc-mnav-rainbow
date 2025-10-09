@@ -15,6 +15,7 @@ const http = require('http');
 const BTC_CSV_PATH = 'btc_historical_prices.csv';
 const MNAV_CSV_PATH = 'btc_mnav_merged.csv';
 const OUTPUT_JS_PATH = 'data.js';
+const SHARE_CLASSES_JSON = path.join('data', 'share_classes.json');
 
 // Optional: URLs to download CSV files from
 // const BTC_CSV_URL = 'https://example.com/btc_historical_prices.csv';
@@ -86,6 +87,12 @@ function readBtcData(filepath) {
 
 /**
  * Read MNAV data from CSV
+ * Optionally supports multiple share classes to recompute market cap/MNAV when provided.
+ * Optional columns supported (case-insensitive, multiple aliases):
+ * - Class A shares: class_a_shares, classAShares, MSTR_ClassA_Shares
+ * - Class B shares: class_b_shares, classBShares, MSTR_ClassB_Shares
+ * - Conversion (B->A): class_b_to_a, classB_to_A, conv_b_to_a (default 1)
+ * - MSTR share price (Class A): mstr_price_usd, class_a_price, MSTR_ClassA_Price
  */
 function readMnavData(filepath) {
     try {
@@ -104,23 +111,91 @@ function readMnavData(filepath) {
         for (const row of records) {
             // Handle potential # prefix in column names
             const date = (row['# date'] || row['date'] || '').replace('# ', '');
+            if (!date) continue;
 
-            if (date) {
-                mnavData.push({
-                    date: date,
-                    spotPrice: parseFloat(row['spot btc_price_usd'] || row['spotPrice'] || 0),
-                    mnav: parseFloat(row['MNAV'] || row['mnav'] || 0),
-                    mnavAdjustedPrice: parseFloat(row['MNAV_x_BTC_Price'] || row['mnavAdjustedPrice'] || 0),
-                    btcHoldings: parseFloat(row['MSTR_BTC_Holdings'] || row['btcHoldings'] || 0),
-                    marketCap: parseFloat(row['MSTR_Market_Cap_USD'] || row['marketCap'] || 0)
-                });
+            const toNum = (v) => {
+                const n = parseFloat(v);
+                return Number.isFinite(n) ? n : null;
+            };
+            const spotPrice = toNum(row['spot btc_price_usd'] || row['spotPrice']);
+            const btcHoldings = toNum(row['MSTR_BTC_Holdings'] || row['btcHoldings']);
+            let marketCap = toNum(row['MSTR_Market_Cap_USD'] || row['marketCap']);
+
+            // Optional share class fields
+            const classAShares = toNum(row['class_a_shares'] || row['classAShares'] || row['MSTR_ClassA_Shares']);
+            const classBShares = toNum(row['class_b_shares'] || row['classBShares'] || row['MSTR_ClassB_Shares']);
+            const classBtoA = toNum(row['class_b_to_a'] || row['classB_to_A'] || row['conv_b_to_a']) ?? 1; // default 1:1 conversion
+            const mstrSharePrice = toNum(row['mstr_price_usd'] || row['class_a_price'] || row['MSTR_ClassA_Price']);
+
+            // If we have share counts and a share price but no market cap, compute it
+            let effectiveShares = null;
+            if ((classAShares != null || classBShares != null)) {
+                effectiveShares = (classAShares || 0) + (classBShares || 0) * (classBtoA || 1);
             }
+            if ((marketCap == null || !(marketCap > 0)) && mstrSharePrice != null && mstrSharePrice > 0 && effectiveShares != null && effectiveShares > 0) {
+                marketCap = mstrSharePrice * effectiveShares;
+            }
+
+            // Base MNAV fields (from CSV if present)
+            let mnav = toNum(row['MNAV'] || row['mnav']);
+            let mnavAdjustedPrice = toNum(row['MNAV_x_BTC_Price'] || row['mnavAdjustedPrice']);
+
+            // If we have the components, recompute MNAV and adjusted price
+            if ((spotPrice != null && spotPrice > 0) && (btcHoldings != null && btcHoldings > 0) && (marketCap != null && marketCap > 0)) {
+                const navTheoretical = spotPrice * btcHoldings;
+                if (isFinite(navTheoretical) && navTheoretical > 0) {
+                    mnav = marketCap / navTheoretical;
+                    mnavAdjustedPrice = mnav * spotPrice;
+                }
+            }
+
+            mnavData.push({
+                date,
+                spotPrice: spotPrice ?? null,
+                mnav: mnav ?? null,
+                mnavAdjustedPrice: mnavAdjustedPrice ?? null,
+                btcHoldings: btcHoldings ?? null,
+                marketCap: marketCap ?? null,
+                classAShares: classAShares ?? null,
+                classBShares: classBShares ?? null,
+                classBtoA: classBtoA ?? null,
+                mstrSharePrice: mstrSharePrice ?? null,
+                effectiveShares: effectiveShares ?? null,
+            });
         }
 
         console.log(`✅ Read ${mnavData.length} MNAV records`);
         return mnavData;
     } catch (error) {
         console.log(`❌ Error reading MNAV data: ${error.message}`);
+        return [];
+    }
+}
+
+/**
+ * Read share classes time series JSON if present
+ */
+function readShareClasses(filepath) {
+    try {
+        if (!fs.existsSync(filepath)) {
+            console.log(`ℹ️  Share-classes file not found: ${filepath}`);
+            return [];
+        }
+        const raw = fs.readFileSync(filepath, 'utf-8');
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+        // Normalize
+        const norm = arr.map(r => ({
+            date: r.date,
+            classAShares: Number.isFinite(r.classAShares) ? r.classAShares : null,
+            classBShares: Number.isFinite(r.classBShares) ? r.classBShares : null,
+            classBtoA: Number.isFinite(r.classBtoA) ? r.classBtoA : 1,
+        })).filter(r => r.date);
+        norm.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        console.log(`✅ Read ${norm.length} share-class records`);
+        return norm;
+    } catch (e) {
+        console.log(`❌ Error reading share classes: ${e.message}`);
         return [];
     }
 }
@@ -285,6 +360,40 @@ async function main() {
     // Read data from CSV files
     const btcData = readBtcData(BTC_CSV_PATH);
     const mnavData = readMnavData(MNAV_CSV_PATH);
+    const shareClasses = readShareClasses(SHARE_CLASSES_JSON);
+
+    // Merge share classes by forward-fill onto mnavData
+    if (shareClasses.length > 0 && mnavData.length > 0) {
+        let idx = 0;
+        let current = null;
+        const byDate = (d) => d && d.date;
+        mnavData.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        for (const row of mnavData) {
+            while (idx < shareClasses.length && shareClasses[idx].date <= row.date) {
+                current = shareClasses[idx];
+                idx++;
+            }
+            if (current) {
+                if (row.classAShares == null) row.classAShares = current.classAShares;
+                if (row.classBShares == null) row.classBShares = current.classBShares;
+                if (row.classBtoA == null) row.classBtoA = current.classBtoA;
+                const eff = (row.classAShares || 0) + (row.classBShares || 0) * (row.classBtoA || 1);
+                if (!row.effectiveShares && eff > 0) row.effectiveShares = eff;
+                // If we can complete marketCap from shares and price
+                if ((!row.marketCap || !(row.marketCap > 0)) && row.mstrSharePrice && eff > 0) {
+                    row.marketCap = row.mstrSharePrice * eff;
+                }
+                // Recompute MNAV if components present
+                if (row.spotPrice && row.spotPrice > 0 && row.btcHoldings && row.btcHoldings > 0 && row.marketCap && row.marketCap > 0) {
+                    const navTheoretical = row.spotPrice * row.btcHoldings;
+                    if (isFinite(navTheoretical) && navTheoretical > 0) {
+                        row.mnav = row.marketCap / navTheoretical;
+                        row.mnavAdjustedPrice = row.mnav * row.spotPrice;
+                    }
+                }
+            }
+        }
+    }
 
     if (btcData.length === 0 && mnavData.length === 0) {
         console.log('❌ No data found to write');
