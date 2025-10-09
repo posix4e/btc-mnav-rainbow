@@ -13,11 +13,11 @@ let pendingCustomSettings = { ...customSettings };
 // Preset configurations matching Blockchain Center rainbow chart
 const presetConfigs = {
     logarithmic: {
-        // Power law regression (non-linear, long-term fit)
-        // Matches the Blockchain Center "Logarithmic Regression" model
-        // Power law: price = 10^(intercept) * days^slope
-        slope: 0.58,        // Power law exponent (how fast it curves up)
-        intercept: -0.8,    // Log of the multiplier coefficient
+        // Logarithmic regression model
+        // Uses linear regression in log space from 2011
+        // These parameters are calibrated to match current BTC prices
+        slope: 0.00055,     // Daily growth rate in log space
+        intercept: 2.4,     // Starting point in log space
         bandWidth: 0.32,    // Band spacing in log space
         bandCount: 9,
         startYear: 2011
@@ -81,19 +81,9 @@ function calculateRegression(data, usePreset = false) {
             firstDate: startDate,
             predict: (date) => {
                 const daysSince = (new Date(date) - startDate) / (1000 * 60 * 60 * 24);
-                let logPrice;
-
-                if (currentPreset === 'logarithmic') {
-                    // Power law: price = a * (days ^ b)
-                    // In log space: log(price) = log(a) + b * log(days)
-                    // This creates the characteristic curve
-                    const safeDays = Math.max(1, daysSince);
-                    logPrice = config.intercept + config.slope * Math.log10(safeDays);
-                } else {
-                    // Linear regression: straight line in log space
-                    logPrice = config.slope * daysSince + config.intercept;
-                }
-
+                // For now, use linear in log space for both models
+                // We'll differentiate them with different parameters
+                const logPrice = config.slope * daysSince + config.intercept;
                 return Math.pow(10, logPrice);
             }
         };
