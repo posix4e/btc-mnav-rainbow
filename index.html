@@ -49,102 +49,44 @@
             </div>
         </div>
 
-        <div class="controls" style="margin-top: 15px;">
-            <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <label style="font-weight: bold; color: #2d3748;">Rainbow Chart Model:</label>
-                    <button class="preset-btn active" data-preset="logarithmic">Logarithmic Regression</button>
-                    <button class="preset-btn" data-preset="linear">Linear Regression</button>
-                    <button class="preset-btn" data-preset="custom">Custom</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls" id="customControls" style="margin-top: 15px; display: none;">
-            <div class="toggle-group" style="background: #f7fafc; padding: 15px;">
-                <div style="margin-bottom: 15px; padding: 10px; background: #e2e8f0; border-radius: 5px;">
-                    <strong>Calibration Guide:</strong><br>
-                    <small>
-                        🔴 2017 Dec: $20k → Should be RED (top)<br>
-                        🔵 2018 Dec: $3.5k → Should be BLUE (bottom)<br>
-                        🟠 2021 Nov: $69k → Should be ORANGE/RED<br>
-                        🟢 2022 Nov: $16k → Should be BLUE/GREEN<br>
-                        🟡 2024 Current → Should be GREEN/YELLOW (middle)
-                    </small>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Slope: <span id="slopeValue">0.00063</span>
-                        </label>
-                        <input type="range" id="slopeSlider" min="0.0003" max="0.0010" step="0.00001" value="0.00063" style="width: 100%;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Intercept: <span id="interceptValue">1.85</span>
-                        </label>
-                        <input type="range" id="interceptSlider" min="0" max="4" step="0.01" value="1.85" style="width: 100%;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Band Width: <span id="bandWidthValue">0.3</span>
-                        </label>
-                        <input type="range" id="bandWidthSlider" min="0.1" max="0.5" step="0.01" value="0.3" style="width: 100%;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568;">
-                            Band Count: <span id="bandCountValue">9</span>
-                        </label>
-                        <input type="range" id="bandCountSlider" min="5" max="12" step="1" value="9" style="width: 100%;">
-                    </div>
-                </div>
-                <div style="margin-top: 20px; text-align: center;">
-                    <button id="recomputeBtn" class="preset-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 30px; font-size: 1rem;">
-                        Apply Changes
-                    </button>
-                    <span id="pendingChanges" style="display: none; margin-left: 15px; color: #e53e3e; font-weight: 600;">
-                        ⚠️ Changes pending
-                    </span>
-                </div>
-            </div>
-        </div>
+        <!-- Model presets and custom controls removed: using fitted reference model from data.js -->
 
         <div class="legend">
             <div class="legend-item">
-                <div class="legend-color" style="background: #FF0000;"></div>
-                <span>Maximum Bubble Territory</span>
+                <div class="legend-color" style="background: #c00200;"></div>
+                <span>Maximum bubble territory</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #FF7F00;"></div>
+                <div class="legend-color" style="background: #d64018;"></div>
                 <span>Sell. Seriously, SELL!</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #FFFF00;"></div>
+                <div class="legend-color" style="background: #ed7d31;"></div>
                 <span>FOMO Intensifies</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #7FFF00;"></div>
+                <div class="legend-color" style="background: #f6b45a;"></div>
                 <span>Is this a bubble?</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #00FF00;"></div>
-                <span>HODLers Paradise</span>
+                <div class="legend-color" style="background: #feeb84;"></div>
+                <span>HODL!</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #00FF7F;"></div>
-                <span>Still Cheap</span>
+                <div class="legend-color" style="background: #b1d580;"></div>
+                <span>Still cheap</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #00FFFF;"></div>
+                <div class="legend-color" style="background: #63be7b;"></div>
                 <span>Accumulate</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #007FFF;"></div>
+                <div class="legend-color" style="background: #54989f;"></div>
                 <span>BUY!</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #0000FF;"></div>
-                <span>Fire Sale</span>
+                <div class="legend-color" style="background: #4472c4;"></div>
+                <span>Fire sale!</span>
             </div>
         </div>
 

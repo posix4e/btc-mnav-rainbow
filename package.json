@@ -6,7 +6,8 @@
   "scripts": {
     "update-data": "node update-data.js",
     "serve": "npx http-server -p 8080 -c-1",
-    "dev": "npx http-server -p 8080 -c-1"
+    "dev": "npx http-server -p 8080 -c-1",
+    "compare": "node scripts/compare-screenshots.js"
   },
   "keywords": [
     "bitcoin",
@@ -21,7 +22,8 @@
   "license": "MIT",
   "devDependencies": {
     "csv-parse": "^5.5.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "puppeteer": "^22.15.0"
   },
   "repository": {
     "type": "git",
