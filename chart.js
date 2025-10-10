@@ -1,6 +1,8 @@
 let chart = null;
 let btcData = [];
 let mnavData = [];
+let strData = {};
+let extendedDates = [];
 
 // Preset controls removed; model parameters come from data.js
 
@@ -42,6 +44,7 @@ async function loadData() {
     // Use data from data.js
     btcData = btcHistoricalData;
     mnavData = mnavHistoricalData;
+    strData = typeof strHistoricalData !== 'undefined' ? strHistoricalData : {};
 
     createChart();
     updateStats();
@@ -139,12 +142,45 @@ function computeModelSeries(length, model) {
     return result;
 }
 
+// Create function to calculate custom MNAV based on selected components
+function calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includeSTRF, includeSTRK) {
+    const mnavItem = mnavData.find(m => m.date === date);
+    if (!mnavItem || !mnavItem.btcNav) return null;
+
+    let enterpriseValue = mnavItem.marketCap || 0;
+
+    if (includeDebt) {
+        enterpriseValue += mnavItem.debt || 0;
+    }
+
+    // Add individual STR components
+    if (includeSTRC && strData.STRC) {
+        const strItem = strData.STRC.find(s => s.date === date);
+        if (strItem) enterpriseValue += strItem.notional || 0;
+    }
+    if (includeSTRD && strData.STRD) {
+        const strItem = strData.STRD.find(s => s.date === date);
+        if (strItem) enterpriseValue += strItem.notional || 0;
+    }
+    if (includeSTRF && strData.STRF) {
+        const strItem = strData.STRF.find(s => s.date === date);
+        if (strItem) enterpriseValue += strItem.notional || 0;
+    }
+    if (includeSTRK && strData.STRK) {
+        const strItem = strData.STRK.find(s => s.date === date);
+        if (strItem) enterpriseValue += strItem.notional || 0;
+    }
+
+    const mnav = enterpriseValue / mnavItem.btcNav;
+    return mnav * mnavItem.spotPrice;
+}
+
 function createChart() {
     const ctx = document.getElementById('rainbowChart').getContext('2d');
 
     // Build extended date axis (9 months ahead)
     const baseDates = btcData.map(d => d.date);
-    const extendedDates = generateExtendedDates(baseDates, 9);
+    extendedDates = generateExtendedDates(baseDates, 9);
 
     // Compute model baselines (center) from fitted reference equations
     const btcBaseline = computeModelSeries(extendedDates.length, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
@@ -188,10 +224,20 @@ function createChart() {
     }
     const btcRainbowBands = buildBands(btcBaseline, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null, 10);
 
-    // Create aligned data for MSTR MNAV (with null values before 2022)
-    const mnavAlignedData = extendedDates.map(date => {
+    // Create aligned data for both naive and advanced MSTR MNAV
+    const naiveMnavAlignedData = extendedDates.map(date => {
         const mnavItem = mnavData.find(m => m.date === date);
-        return mnavItem ? mnavItem.mnavAdjustedPrice : null;
+        return mnavItem ? mnavItem.naiveMnavAdjustedPrice : null;
+    });
+
+    const advancedMnavAlignedData = extendedDates.map(date => {
+        const mnavItem = mnavData.find(m => m.date === date);
+        return mnavItem ? mnavItem.advancedMnavAdjustedPrice : null;
+    });
+
+    // Create data for debt-only MNAV
+    const debtOnlyMnavData = extendedDates.map(date => {
+        return calculateCustomMnav(date, true, false, false, false, false);
     });
 
     // Create halving annotations
@@ -237,18 +283,45 @@ function createChart() {
             order: 1,
             spanGaps: false
         },
-        // MSTR MNAV-Adjusted Price
+        // MSTR Naive MNAV (Market Cap only)
         {
-            label: 'MSTR MNAV-Adjusted Price',
-            data: mnavAlignedData,
+            label: 'MSTR Naive MNAV',
+            data: naiveMnavAlignedData,
+            borderColor: 'rgba(153, 102, 255, 0.5)',
+            backgroundColor: 'rgba(153, 102, 255, 0.05)',
+            borderWidth: 2,
+            borderDash: [5, 5],  // Dashed line for naive
+            fill: false,
+            pointRadius: 0,
+            tension: 0.2,
+            order: 2,
+            spanGaps: true
+        },
+        // MSTR Advanced MNAV (Market Cap + Debt + Preferred)
+        {
+            label: 'MSTR Advanced MNAV',
+            data: advancedMnavAlignedData,
             borderColor: 'rgb(153, 102, 255)',
             backgroundColor: 'rgba(153, 102, 255, 0.1)',
             borderWidth: 3,
             fill: false,
             pointRadius: 0,
-            tension: 0.2,  // Add smoothing to the line
-            order: 2,
-            spanGaps: true  // Connect across gaps in data
+            tension: 0.2,
+            order: 3,
+            spanGaps: true
+        },
+        // Custom MNAV (dynamically calculated)
+        {
+            label: 'Custom MNAV',
+            data: advancedMnavAlignedData, // Start with advanced, will be updated dynamically
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 0,
+            tension: 0.2,
+            order: 4,
+            spanGaps: true
         }
     ];
 
@@ -343,13 +416,47 @@ function setupToggles() {
         chart.update();
     });
 
-    document.getElementById('showMNAV').addEventListener('change', function(e) {
+    document.getElementById('showNaiveMNAV').addEventListener('change', function(e) {
         chart.data.datasets[1].hidden = !e.target.checked;
         chart.update();
     });
 
+    document.getElementById('showAdvancedMNAV').addEventListener('change', function(e) {
+        chart.data.datasets[2].hidden = !e.target.checked;
+        chart.update();
+    });
+
+    document.getElementById('showCustomMNAV').addEventListener('change', function(e) {
+        chart.data.datasets[3].hidden = !e.target.checked;
+        chart.update();
+    });
+
+    // Function to update custom MNAV based on selected components
+    function updateCustomMNAV() {
+        const includeDebt = document.getElementById('includeDebt').checked;
+        const includeSTRC = document.getElementById('includeSTRC').checked;
+        const includeSTRD = document.getElementById('includeSTRD').checked;
+        const includeSTRF = document.getElementById('includeSTRF').checked;
+        const includeSTRK = document.getElementById('includeSTRK').checked;
+
+        const customData = extendedDates.map(date => {
+            return calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includeSTRF, includeSTRK);
+        });
+
+        chart.data.datasets[3].data = customData;
+        chart.update();
+    }
+
+    // Add event listeners for component checkboxes
+    ['includeDebt', 'includeSTRC', 'includeSTRD', 'includeSTRF', 'includeSTRK'].forEach(id => {
+        document.getElementById(id).addEventListener('change', updateCustomMNAV);
+    });
+
+    // Initialize custom MNAV with current checkbox state
+    updateCustomMNAV();
+
     document.getElementById('showSpotRainbow').addEventListener('change', function(e) {
-        const startIdx = 2;
+        const startIdx = 4;  // After BTC, Naive MNAV, Advanced MNAV, and Custom MNAV
         const endIdx = startIdx + 20;
         for (let i = startIdx; i < endIdx && i < chart.data.datasets.length; i++) {
             if (chart.data.datasets[i].order >= 10 && chart.data.datasets[i].order < 30) {
@@ -372,6 +479,11 @@ function setupToggles() {
     // Time range buttons
     document.querySelectorAll('.time-btn').forEach(btn => {
         btn.addEventListener('click', function() {
+            if (!chart) {
+                console.error('Chart not initialized');
+                return;
+            }
+
             document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
 
@@ -402,16 +514,16 @@ function setupToggles() {
             if (minDate) {
                 chart.options.scales.x.min = minDate.toISOString().split('T')[0];
             } else {
-                delete chart.options.scales.x.min;
+                chart.options.scales.x.min = undefined;
             }
 
             if (maxDate) {
                 chart.options.scales.x.max = maxDate.toISOString().split('T')[0];
             } else {
-                delete chart.options.scales.x.max;
+                chart.options.scales.x.max = undefined;
             }
 
-            chart.update();
+            chart.update('none'); // Use 'none' mode for immediate update
         });
     });
 
@@ -427,12 +539,12 @@ function updateStats() {
             <p>$${latestBTC.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
         </div>
         <div class="stat-card">
-            <h3>Latest MNAV-Adjusted Price</h3>
-            <p>$${latestMNAV.mnavAdjustedPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+            <h3>Naive MNAV</h3>
+            <p>${((latestMNAV.naiveMnav || 1) * 100).toFixed(1)}%</p>
         </div>
         <div class="stat-card">
-            <h3>MSTR MNAV Premium</h3>
-            <p>${(latestMNAV.mnav * 100).toFixed(1)}%</p>
+            <h3>Advanced MNAV</h3>
+            <p>${((latestMNAV.advancedMnav || 1) * 100).toFixed(1)}%</p>
         </div>
         <div class="stat-card">
             <h3>MSTR BTC Holdings</h3>

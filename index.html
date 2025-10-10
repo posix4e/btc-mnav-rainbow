@@ -23,8 +23,12 @@
                 <label for="showSpot">BTC Spot Price</label>
             </div>
             <div class="toggle-group">
-                <input type="checkbox" id="showMNAV" checked>
-                <label for="showMNAV">MSTR MNAV-Adjusted</label>
+                <input type="checkbox" id="showNaiveMNAV" checked>
+                <label for="showNaiveMNAV">Naive MNAV</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showAdvancedMNAV" checked>
+                <label for="showAdvancedMNAV">Advanced MNAV</label>
             </div>
             <div class="toggle-group">
                 <input type="checkbox" id="showSpotRainbow" checked>
@@ -33,6 +37,36 @@
             <div class="toggle-group">
                 <input type="checkbox" id="showHalvings" checked>
                 <label for="showHalvings">Halving Lines</label>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 10px; background: rgba(100, 100, 100, 0.1); padding: 10px; border-radius: 8px;">
+            <div style="font-weight: bold; margin-bottom: 10px;">Custom MNAV Components:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <div class="toggle-group" style="background: rgba(255, 99, 132, 0.1);">
+                    <input type="checkbox" id="includeDebt" checked>
+                    <label for="includeDebt">+ Debt</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(54, 162, 235, 0.1);">
+                    <input type="checkbox" id="includeSTRC" checked>
+                    <label for="includeSTRC">+ STRC</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(255, 206, 86, 0.1);">
+                    <input type="checkbox" id="includeSTRD" checked>
+                    <label for="includeSTRD">+ STRD</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(75, 192, 192, 0.1);">
+                    <input type="checkbox" id="includeSTRF" checked>
+                    <label for="includeSTRF">+ STRF</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(153, 102, 255, 0.1);">
+                    <input type="checkbox" id="includeSTRK" checked>
+                    <label for="includeSTRK">+ STRK</label>
+                </div>
+            </div>
+            <div class="toggle-group" style="margin-top: 10px;">
+                <input type="checkbox" id="showCustomMNAV" checked>
+                <label for="showCustomMNAV">Show Custom MNAV</label>
             </div>
         </div>
 

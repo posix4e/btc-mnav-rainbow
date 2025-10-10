@@ -29,3 +29,10 @@ __pycache__/
 .Python
 env/
 venv/
+# Data files not needed for production
+Assets.csv
+BTC.csv
+Debt.csv
+Options.csv
+Purchases.csv
+btc_mnav_merged.csv

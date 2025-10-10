@@ -15,6 +15,12 @@ const http = require('http');
 const BTC_CSV_PATH = 'btc_historical_prices.csv';
 const MNAV_CSV_PATH = 'MSTR.csv';
 const OUTPUT_JS_PATH = 'data.js';
+const STR_FILES = {
+    STRC: 'STRC.csv',
+    STRD: 'STRD.csv',
+    STRF: 'STRF.csv',
+    STRK: 'STRK.csv'
+};
 
 // Optional: URLs to download CSV files from
 // const BTC_CSV_URL = 'https://example.com/btc_historical_prices.csv';
@@ -85,14 +91,63 @@ function readBtcData(filepath) {
 }
 
 /**
+ * Read STR preferred stock data
+ */
+function readStrData(filepath, strName) {
+    try {
+        if (!fs.existsSync(filepath)) {
+            console.log(`⚠️  ${strName} file not found: ${filepath}`);
+            return [];
+        }
+
+        const fileContent = fs.readFileSync(filepath, 'utf-8');
+        const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true
+        });
+
+        const strData = [];
+        for (const row of records) {
+            const timestamp = row['timestamp'] || '';
+            const date = timestamp.split(' ')[0];
+            if (!date) continue;
+
+            const toNum = (v) => {
+                const n = parseFloat(v);
+                return Number.isFinite(n) ? n : null;
+            };
+
+            strData.push({
+                date,
+                notional: toNum(row['notional']) || 0,
+                marketCap: toNum(row['market_cap']) || 0,
+                price: toNum(row['close']) || 0
+            });
+        }
+
+        // Sort by date
+        strData.sort((a, b) => a.date.localeCompare(b.date));
+        console.log(`✅ Read ${strData.length} ${strName} records`);
+        return strData;
+    } catch (error) {
+        console.log(`❌ Error reading ${strName} data: ${error.message}`);
+        return [];
+    }
+}
+
+/**
  * Read MNAV data from CSV
  * Supports new MSTR.csv format from MicroStrategy with columns:
  * - timestamp: date field
  * - btc_price: BTC spot price
  * - btc_holdings: BTC holdings
- * - market_cap: Market cap
+ * - market_cap: Market cap (enterprise value)
  * - m_nav: MNAV ratio (market_cap / btc_nav)
+ * - debt: Total debt
+ * - pref: Preferred stock value
  * - close: MSTR share price (closing)
+ *
+ * True MNAV = (Market Cap + Debt + Preferred) / BTC NAV
  */
 function readMnavData(filepath) {
     try {
@@ -123,29 +178,42 @@ function readMnavData(filepath) {
             const spotPrice = toNum(row['btc_price']);
             const btcHoldings = toNum(row['btc_holdings']);
             const marketCap = toNum(row['market_cap']);
-            let mnav = toNum(row['m_nav']);
+            const debt = toNum(row['debt']) || 0;
+            const pref = toNum(row['pref']) || 0;
             const mstrSharePrice = toNum(row['close']);
 
-            // If MNAV not provided, calculate it from market cap and holdings
-            if ((mnav == null || !(mnav > 0)) && marketCap > 0 && btcHoldings > 0 && spotPrice > 0) {
-                const btcNav = btcHoldings * spotPrice;
-                mnav = marketCap / btcNav;
-            }
+            // Calculate both naive and advanced MNAV
+            let naiveMnav = null;
+            let advancedMnav = null;
+            let naiveMnavAdjustedPrice = null;
+            let advancedMnavAdjustedPrice = null;
 
-            // Calculate MNAV adjusted price
-            let mnavAdjustedPrice = null;
-            if (mnav != null && spotPrice != null && spotPrice > 0) {
-                mnavAdjustedPrice = mnav * spotPrice;
+            if (marketCap > 0 && btcHoldings > 0 && spotPrice > 0) {
+                const btcNav = btcHoldings * spotPrice;
+
+                // Naive MNAV: just market cap / BTC NAV
+                naiveMnav = marketCap / btcNav;
+                naiveMnavAdjustedPrice = naiveMnav * spotPrice;
+
+                // Advanced MNAV: (Market Cap + Debt + Preferred) / BTC NAV
+                const enterpriseValue = marketCap + debt + pref;
+                advancedMnav = enterpriseValue / btcNav;
+                advancedMnavAdjustedPrice = advancedMnav * spotPrice;
             }
 
             mnavData.push({
                 date,
                 spotPrice: spotPrice ?? null,
-                mnav: mnav ?? null,
-                mnavAdjustedPrice: mnavAdjustedPrice ?? null,
+                naiveMnav: naiveMnav ?? null,
+                advancedMnav: advancedMnav ?? null,
+                naiveMnavAdjustedPrice: naiveMnavAdjustedPrice ?? null,
+                advancedMnavAdjustedPrice: advancedMnavAdjustedPrice ?? null,
                 btcHoldings: btcHoldings ?? null,
                 marketCap: marketCap ?? null,
-                mstrSharePrice: mstrSharePrice ?? null
+                debt: debt ?? null,
+                pref: pref ?? null,
+                mstrSharePrice: mstrSharePrice ?? null,
+                btcNav: btcHoldings && spotPrice ? btcHoldings * spotPrice : null
             });
         }
 
@@ -243,14 +311,15 @@ function fitRainbowModel(series) {
 /**
  * Write data to data.js file
  */
-function writeDataJs(btcData, mnavData, filepath) {
+function writeDataJs(btcData, mnavData, strDataMap, filepath) {
     try {
         const timestamp = new Date().toISOString();
         // Fit reference rainbow models
         const rainbowModelBTC = fitRainbowModel(btcData);
+        // Use advanced MNAV for rainbow model fitting
         const mnavSeries = mnavData
-            .filter(d => isFinite(d.mnavAdjustedPrice) && d.mnavAdjustedPrice > 0)
-            .map(d => ({ date: d.date, price: d.mnavAdjustedPrice }));
+            .filter(d => isFinite(d.advancedMnavAdjustedPrice) && d.advancedMnavAdjustedPrice > 0)
+            .map(d => ({ date: d.date, price: d.advancedMnavAdjustedPrice }));
         const rainbowModelMNAV = fitRainbowModel(mnavSeries);
         const jsContent = `// Bitcoin Rainbow Chart Data
 // Last updated: ${timestamp}
@@ -259,6 +328,8 @@ function writeDataJs(btcData, mnavData, filepath) {
 const btcHistoricalData = ${JSON.stringify(btcData, null, 2)};
 
 const mnavHistoricalData = ${JSON.stringify(mnavData, null, 2)};
+
+const strHistoricalData = ${JSON.stringify(strDataMap, null, 2)};
 
 const rainbowModelBTC = ${JSON.stringify(rainbowModelBTC, null, 2)};
 const rainbowModelMNAV = ${JSON.stringify(rainbowModelMNAV, null, 2)};
@@ -322,13 +393,19 @@ async function main() {
     const btcData = readBtcData(BTC_CSV_PATH);
     const mnavData = readMnavData(MNAV_CSV_PATH);
 
+    // Read STR preferred stock data
+    const strDataMap = {};
+    for (const [strName, strFile] of Object.entries(STR_FILES)) {
+        strDataMap[strName] = readStrData(strFile, strName);
+    }
+
     if (btcData.length === 0 && mnavData.length === 0) {
         console.log('❌ No data found to write');
         process.exit(1);
     }
 
     // Write to data.js
-    if (writeDataJs(btcData, mnavData, OUTPUT_JS_PATH)) {
+    if (writeDataJs(btcData, mnavData, strDataMap, OUTPUT_JS_PATH)) {
         console.log('-'.repeat(50));
         console.log('✨ Data update complete!');
         console.log(`📁 Output file: ${OUTPUT_JS_PATH}`);
