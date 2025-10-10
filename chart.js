@@ -148,7 +148,6 @@ function createChart() {
 
     // Compute model baselines (center) from fitted reference equations
     const btcBaseline = computeModelSeries(extendedDates.length, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
-    const mnavBaselineRaw = computeModelSeries(mnavData.length, typeof rainbowModelMNAV !== 'undefined' ? rainbowModelMNAV : null);
 
     // Generate rainbow bands using reference band logic
     function buildBands(baseline, model, orderBase) {
@@ -188,7 +187,6 @@ function createChart() {
         return bands;
     }
     const btcRainbowBands = buildBands(btcBaseline, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null, 10);
-    const mnavRainbowBandsRaw = buildBands(mnavBaselineRaw, typeof rainbowModelMNAV !== 'undefined' ? rainbowModelMNAV : null, 30);
 
     // Create aligned data for MSTR MNAV (with null values before 2022)
     const mnavAlignedData = extendedDates.map(date => {
@@ -248,27 +246,15 @@ function createChart() {
             borderWidth: 3,
             fill: false,
             pointRadius: 0,
-            tension: 0,
+            tension: 0.2,  // Add smoothing to the line
             order: 2,
-            spanGaps: false
+            spanGaps: true  // Connect across gaps in data
         }
     ];
 
     // Add rainbow bands
     btcRainbowBands.forEach(band => {
         band.hidden = false;
-        datasets.push(band);
-    });
-
-    // Align MNAV rainbow bands with extended BTC dates (null where MNAV missing)
-    mnavRainbowBandsRaw.forEach((band) => {
-        const alignedData = extendedDates.map(date => {
-            const mnavIndex = mnavData.findIndex(m => m.date === date);
-            return mnavIndex !== -1 ? band.data[mnavIndex] : null;
-        });
-        band.data = alignedData;
-        band.hidden = true;
-        band.spanGaps = false;
         datasets.push(band);
     });
 
@@ -373,15 +359,6 @@ function setupToggles() {
         chart.update();
     });
 
-    document.getElementById('showMNAVRainbow').addEventListener('change', function(e) {
-        const startIdx = 22;
-        for (let i = startIdx; i < chart.data.datasets.length; i++) {
-            if (chart.data.datasets[i].order >= 30) {
-                chart.data.datasets[i].hidden = !e.target.checked;
-            }
-        }
-        chart.update();
-    });
 
     document.getElementById('showHalvings').addEventListener('change', function(e) {
         Object.keys(chart.options.plugins.annotation.annotations).forEach(key => {
