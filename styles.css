@@ -177,6 +177,93 @@ input[type="checkbox"] {
     width: 100%;
 }
 
+/* Explainer Section */
+.explainer {
+    margin-top: 60px;
+    padding: 40px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border-radius: 20px;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.explainer h2 {
+    text-align: center;
+    color: #2d3748;
+    font-size: 2rem;
+    margin-bottom: 40px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.insight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.insight-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 25px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.insight-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.insight-card h3 {
+    color: #2d3748;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.insight-card p {
+    color: #4a5568;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.key-insight {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 20px;
+    padding: 30px;
+    color: white;
+    text-align: center;
+}
+
+.key-insight h3 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+}
+
+.key-insight p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    opacity: 0.95;
+}
+
+.key-insight .formula {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    text-align: left;
+    display: inline-block;
+    margin: 0 auto;
+}
+
+.key-insight .formula strong {
+    color: #ffd700;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     h1 {
@@ -190,5 +277,13 @@ input[type="checkbox"] {
     .controls {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .insight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .explainer {
+        padding: 20px;
     }
 }
