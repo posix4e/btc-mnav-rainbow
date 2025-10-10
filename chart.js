@@ -477,14 +477,14 @@ function setupToggles() {
     });
 
     // Time range buttons
-    document.querySelectorAll('.time-btn').forEach(btn => {
+    document.querySelectorAll('.zoom-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             if (!chart) {
                 console.error('Chart not initialized');
                 return;
             }
 
-            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
 
             const range = this.dataset.range;
@@ -492,18 +492,18 @@ function setupToggles() {
             let minDate = null;
             let maxDate = today; // Default to today to avoid showing future data
 
+            // Calculate halving-based ranges
+            // Average time between halvings is ~4 years (1460 days)
+            const daysPerHalving = 1460;
+
             switch(range) {
-                case '1Y':
+                case '1.5H': // 1.5 halvings = ~6 years
                     minDate = new Date(today);
-                    minDate.setFullYear(minDate.getFullYear() - 1);
+                    minDate.setDate(minDate.getDate() - (1.5 * daysPerHalving));
                     break;
-                case '3Y':
+                case '2.5H': // 2.5 halvings = ~10 years
                     minDate = new Date(today);
-                    minDate.setFullYear(minDate.getFullYear() - 3);
-                    break;
-                case '5Y':
-                    minDate = new Date(today);
-                    minDate.setFullYear(minDate.getFullYear() - 5);
+                    minDate.setDate(minDate.getDate() - (2.5 * daysPerHalving));
                     break;
                 case 'ALL':
                 default:

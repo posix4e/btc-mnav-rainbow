@@ -95,58 +95,59 @@
             </div>
         </div>
 
-        <div class="controls" style="margin-top: 15px;">
-            <div class="toggle-group" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 5px;">
-                <button class="time-btn" data-range="1Y">1Y</button>
-                <button class="time-btn" data-range="3Y">3Y</button>
-                <button class="time-btn" data-range="5Y">5Y</button>
-                <button class="time-btn active" data-range="ALL">All Time</button>
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <canvas id="rainbowChart"></canvas>
             </div>
-        </div>
 
-        <!-- Model presets and custom controls removed: using fitted reference model from data.js -->
+            <div class="chart-sidebar">
+                <div class="rainbow-key">
+                    <div class="key-title">Rainbow Bands</div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #c00200;"></div>
+                        <span>Max bubble</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #d64018;"></div>
+                        <span>SELL!</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #ed7d31;"></div>
+                        <span>FOMO</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #f6b45a;"></div>
+                        <span>Bubble?</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #feeb84;"></div>
+                        <span>HODL</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #b1d580;"></div>
+                        <span>Cheap</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #63be7b;"></div>
+                        <span>Accumulate</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #54989f;"></div>
+                        <span>BUY!</span>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-color" style="background: #4472c4;"></div>
+                        <span>Fire sale</span>
+                    </div>
+                </div>
 
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #c00200;"></div>
-                <span>Maximum bubble territory</span>
+                <div class="zoom-controls">
+                    <div class="key-title">Time Range</div>
+                    <button class="zoom-btn active" data-range="ALL">All</button>
+                    <button class="zoom-btn" data-range="1.5H">1.5 Halvings</button>
+                    <button class="zoom-btn" data-range="2.5H">2.5 Halvings</button>
+                </div>
             </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #d64018;"></div>
-                <span>Sell. Seriously, SELL!</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #ed7d31;"></div>
-                <span>FOMO Intensifies</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #f6b45a;"></div>
-                <span>Is this a bubble?</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #feeb84;"></div>
-                <span>HODL!</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #b1d580;"></div>
-                <span>Still cheap</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #63be7b;"></div>
-                <span>Accumulate</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #54989f;"></div>
-                <span>BUY!</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #4472c4;"></div>
-                <span>Fire sale!</span>
-            </div>
-        </div>
-
-        <div class="chart-wrapper">
-            <canvas id="rainbowChart"></canvas>
         </div>
 
         <div class="stats" id="stats"></div>
