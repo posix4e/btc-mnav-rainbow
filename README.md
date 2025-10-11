@@ -2,7 +2,7 @@
 
 A visualization tool comparing Bitcoin's spot price with MicroStrategy's MNAV-adjusted price using the rainbow chart model, featuring interactive component toggles for analyzing how debt and preferred stock affect the true enterprise value ratio.
 
-🌐 **Live Demo: [https://posix4e.github.io/btc-mnav-rainbow/](https://posix4e.github.io/btc-mnav-rainbow/)**
+🌐 **Live Demo: [https://strategyrainbow.com/](https://strategyrainbow.com/)**
 
 ![BTC MNAV Rainbow Chart Preview](preview.png)
 
