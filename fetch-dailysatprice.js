@@ -29,7 +29,6 @@ async function updateBtcData() {
 
         // Parse CSV
         const lines = csvData.trim().split('\n');
-        const btcData = [];
 
         // Skip header and process each line
         const allData = [];
