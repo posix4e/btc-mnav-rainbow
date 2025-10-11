@@ -370,15 +370,10 @@ function createChart() {
     }
     const btcRainbowBands = buildBands(btcBaseline, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null, 10);
 
-    // Create aligned data for both naive and advanced MSTR MNAV
+    // Create aligned data for naive MSTR MNAV
     const naiveMnavAlignedData = extendedDates.map(date => {
         const mnavItem = mnavData.find(m => m.date === date);
         return mnavItem ? mnavItem.naiveMnavAdjustedPrice : null;
-    });
-
-    const advancedMnavAlignedData = extendedDates.map(date => {
-        const mnavItem = mnavData.find(m => m.date === date);
-        return mnavItem ? mnavItem.advancedMnavAdjustedPrice : null;
     });
 
     // Create data for debt-only MNAV
@@ -418,26 +413,13 @@ function createChart() {
         return item ? item.price : null; // no future price
     });
 
-    // Create datasets based on halving coloring preference
-    let btcDatasets = [];
-    const useHalvingColors = true; // Default to on, will be controlled by toggle
+    // Create datasets with halving-based rainbow coloring
+    let btcDatasets = createHalvingSegmentedDataset(btcSpotData, 'BTC Spot Price');
 
-    if (useHalvingColors) {
-        btcDatasets = createHalvingSegmentedDataset(btcSpotData, 'BTC Spot Price');
-    } else {
-        btcDatasets = [{
-            label: 'BTC Spot Price',
-            data: btcSpotData,
-            borderColor: 'rgb(255, 159, 64)',
-            backgroundColor: 'rgba(255, 159, 64, 0.1)',
-            borderWidth: 3,
-            fill: false,
-            pointRadius: 0,
-            tension: 0,
-            order: 1,
-            spanGaps: false
-        }];
-    }
+    // Calculate initial custom MNAV data with all components enabled
+    const initialCustomData = extendedDates.map(date => {
+        return calculateCustomMnav(date, true, true, true, true, true);
+    });
 
     const datasets = [
         ...btcDatasets,
@@ -455,30 +437,17 @@ function createChart() {
             order: 2,
             spanGaps: true
         },
-        // MSTR Advanced MNAV (Market Cap + Debt + Preferred)
-        {
-            label: 'MSTR Advanced MNAV',
-            data: advancedMnavAlignedData,
-            borderColor: 'rgb(153, 102, 255)',
-            backgroundColor: 'rgba(153, 102, 255, 0.1)',
-            borderWidth: 3,
-            fill: false,
-            pointRadius: 0,
-            tension: 0.2,
-            order: 3,
-            spanGaps: true
-        },
         // Custom MNAV (dynamically calculated)
         {
             label: 'Custom MNAV',
-            data: advancedMnavAlignedData, // Start with advanced, will be updated dynamically
+            data: initialCustomData, // Start with all components enabled
             borderColor: 'rgb(255, 99, 132)',
             backgroundColor: 'rgba(255, 99, 132, 0.1)',
             borderWidth: 2,
             fill: false,
             pointRadius: 0,
             tension: 0.2,
-            order: 4,
+            order: 3,
             spanGaps: true
         }
     ];
@@ -507,13 +476,7 @@ function createChart() {
                     annotations: halvingAnnotations
                 },
                 legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        filter: function(item) {
-                            return item.text !== '';
-                        }
-                    }
+                    display: false
                 },
                 tooltip: {
                     callbacks: {
@@ -572,33 +535,32 @@ function createChart() {
 }
 
 function setupToggles() {
-    // Store halving color state
-    let useHalvingColors = true;
-
     document.getElementById('showSpot').addEventListener('change', function(e) {
-        // Handle multiple BTC datasets when using halving colors
-        const btcDatasets = chart.data.datasets.filter(ds =>
-            ds.label === 'BTC Spot Price' || ds.label === ''
-        ).slice(0, useHalvingColors ? 5 : 1); // Max 5 segments for halvings
-
-        btcDatasets.forEach(ds => {
-            ds.hidden = !e.target.checked;
+        // Handle multiple BTC datasets (rainbow segments)
+        // Find all BTC datasets by checking order = 1
+        chart.data.datasets.forEach(ds => {
+            if (ds.order === 1) {
+                ds.hidden = !e.target.checked;
+            }
         });
         chart.update();
     });
 
     document.getElementById('showNaiveMNAV').addEventListener('change', function(e) {
-        chart.data.datasets[1].hidden = !e.target.checked;
-        chart.update();
-    });
-
-    document.getElementById('showAdvancedMNAV').addEventListener('change', function(e) {
-        chart.data.datasets[2].hidden = !e.target.checked;
+        // Find Naive MNAV dataset by label
+        const naiveDataset = chart.data.datasets.find(ds => ds.label === 'MSTR Naive MNAV');
+        if (naiveDataset) {
+            naiveDataset.hidden = !e.target.checked;
+        }
         chart.update();
     });
 
     document.getElementById('showCustomMNAV').addEventListener('change', function(e) {
-        chart.data.datasets[3].hidden = !e.target.checked;
+        // Find Custom MNAV dataset by label
+        const customDataset = chart.data.datasets.find(ds => ds.label === 'Custom MNAV');
+        if (customDataset) {
+            customDataset.hidden = !e.target.checked;
+        }
         chart.update();
     });
 
@@ -614,7 +576,11 @@ function setupToggles() {
             return calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includeSTRF, includeSTRK);
         });
 
-        chart.data.datasets[3].data = customData;
+        // Find Custom MNAV dataset by label and update its data
+        const customDataset = chart.data.datasets.find(ds => ds.label === 'Custom MNAV');
+        if (customDataset) {
+            customDataset.data = customData;
+        }
         chart.update();
     }
 
@@ -627,13 +593,12 @@ function setupToggles() {
     updateCustomMNAV();
 
     document.getElementById('showSpotRainbow').addEventListener('change', function(e) {
-        const startIdx = 4;  // After BTC, Naive MNAV, Advanced MNAV, and Custom MNAV
-        const endIdx = startIdx + 20;
-        for (let i = startIdx; i < endIdx && i < chart.data.datasets.length; i++) {
-            if (chart.data.datasets[i].order >= 10 && chart.data.datasets[i].order < 30) {
-                chart.data.datasets[i].hidden = !e.target.checked;
+        // Hide/show all rainbow band datasets (order >= 10)
+        chart.data.datasets.forEach(ds => {
+            if (ds.order >= 10) {
+                ds.hidden = !e.target.checked;
             }
-        }
+        });
         chart.update();
     });
 
@@ -644,45 +609,6 @@ function setupToggles() {
                 chart.options.plugins.annotation.annotations[key].display = e.target.checked;
             }
         });
-        chart.update();
-    });
-
-    // Add halving colors toggle
-    document.getElementById('useHalvingColors').addEventListener('change', function(e) {
-        useHalvingColors = e.target.checked;
-
-        // Find and remove existing BTC datasets
-        const nonBtcDatasets = chart.data.datasets.filter(ds =>
-            ds.label !== 'BTC Spot Price' && ds.label !== '' || ds.order > 1
-        );
-
-        // Create new BTC datasets based on toggle
-        let newBtcDatasets;
-        if (useHalvingColors) {
-            newBtcDatasets = createHalvingSegmentedDataset(chart.btcSpotData, 'BTC Spot Price');
-        } else {
-            newBtcDatasets = [{
-                label: 'BTC Spot Price',
-                data: chart.btcSpotData,
-                borderColor: 'rgb(255, 159, 64)',
-                backgroundColor: 'rgba(255, 159, 64, 0.1)',
-                borderWidth: 3,
-                fill: false,
-                pointRadius: 0,
-                tension: 0,
-                order: 1,
-                spanGaps: false
-            }];
-        }
-
-        // Check if BTC should be hidden
-        const shouldHideBtc = !document.getElementById('showSpot').checked;
-        newBtcDatasets.forEach(ds => {
-            ds.hidden = shouldHideBtc;
-        });
-
-        // Rebuild datasets array with BTC first
-        chart.data.datasets = [...newBtcDatasets, ...nonBtcDatasets];
         chart.update();
     });
 
@@ -743,6 +669,10 @@ function updateStats() {
     const latestBTC = btcData[btcData.length - 1];
     const latestMNAV = mnavData[mnavData.length - 1];
 
+    // Calculate custom MNAV for stats
+    const customMnav = calculateCustomMnav(latestMNAV.date, true, true, true, true, true);
+    const customMnavPercent = customMnav ? (customMnav / latestBTC.price * 100).toFixed(1) : 'N/A';
+
     const statsHTML = `
         <div class="stat-card">
             <h3>Latest BTC Spot Price</h3>
@@ -753,8 +683,8 @@ function updateStats() {
             <p>${((latestMNAV.naiveMnav || 1) * 100).toFixed(1)}%</p>
         </div>
         <div class="stat-card">
-            <h3>Advanced MNAV</h3>
-            <p>${((latestMNAV.advancedMnav || 1) * 100).toFixed(1)}%</p>
+            <h3>Custom MNAV</h3>
+            <p>${customMnavPercent}%</p>
         </div>
         <div class="stat-card">
             <h3>MSTR BTC Holdings</h3>

@@ -224,6 +224,38 @@ input[type="checkbox"] {
     font-weight: bold;
 }
 
+/* Line color styles for toggle boxes */
+#showSpot + label {
+    background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+}
+
+#showNaiveMNAV + label {
+    color: rgba(153, 102, 255, 0.8);
+    font-weight: 700;
+}
+
+#showCustomMNAV + label {
+    color: rgb(255, 99, 132);
+    font-weight: 700;
+}
+
+#showSpotRainbow + label {
+    background: linear-gradient(90deg, #4472c4, #54989f, #63be7b, #feeb84, #ed7d31, #c00200);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+}
+
+#showHalvings + label {
+    color: #666;
+    font-weight: 700;
+}
+
 /* Custom controls specific styles */
 #customControls .toggle-group {
     background: #f7fafc;
