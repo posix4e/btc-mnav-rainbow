@@ -1,17 +1,20 @@
 # Bitcoin Rainbow Chart with MSTR MNAV Comparison
 
-A visualization tool comparing Bitcoin's spot price with MicroStrategy's MNAV-adjusted price using the rainbow chart model.
+A visualization tool comparing Bitcoin's spot price with MicroStrategy's MNAV-adjusted price using the rainbow chart model, featuring interactive component toggles for analyzing how debt and preferred stock affect the true enterprise value ratio.
 
 🌐 **Live Demo: [https://posix4e.github.io/btc-mnav-rainbow/](https://posix4e.github.io/btc-mnav-rainbow/)**
 
+![BTC MNAV Rainbow Chart Preview](preview.png)
+
 ## Features
 
-- 🌈 Rainbow bands showing market cycles (Fire Sale → Maximum Bubble)
-- 📊 Compare BTC spot price vs MSTR MNAV-adjusted price
-- 📈 Logarithmic and linear regression models
-- 🎯 Custom parameter adjustments
-- ⚡ Bitcoin halving markers
-- 📱 Responsive design
+- 🌈 Bitcoin rainbow bands showing market cycles (Fire Sale → Maximum Bubble)
+- 📊 Compare BTC spot price vs MSTR MNAV-adjusted prices
+- 🎯 Interactive toggles for debt and preferred stock components
+- 📈 Naive MNAV (market cap only) vs Advanced MNAV (full enterprise value)
+- ⚡ Bitcoin halving markers and halving-based zoom
+- 🔄 Custom MNAV calculator with individual component selection
+- 📱 Responsive design with compact sidebar layout
 
 ## Quick Start
 
@@ -32,43 +35,103 @@ npm run serve
 ```
 Then open http://localhost:8080 in your browser
 
-## Updating Data
+## 📋 Steps to Update Data
 
-Place updated CSV files in the project root:
-- `btc_historical_prices.csv` - Bitcoin price history
-- `btc_mnav_merged.csv` - MSTR MNAV data
+Follow these steps to update the chart with fresh data:
 
-Then run:
+### 1. Update Bitcoin Spot Price
+- Download latest Bitcoin historical prices from a reliable source
+- Ensure the CSV has columns: `date` (YYYY-MM-DD) and `btc_price_usd`
+- Save as `btc_historical_prices.csv` in project root
+
+### 2. Download MicroStrategy Data Files
+Visit [MicroStrategy's Bitcoin Holdings page](https://www.microstrategy.com/bitcoin-holdings) and download:
+
+**Primary file:**
+- `MSTR.csv` - Main MicroStrategy data including market cap, debt, Bitcoin holdings
+
+**Preferred stock series (if available):**
+- `STRC.csv` - Series C Preferred Stock
+- `STRD.csv` - Series D Preferred Stock
+- `STRF.csv` - Series F Preferred Stock
+- `STRK.csv` - Series K Preferred Stock
+
+Place all CSV files in the project root directory.
+
+### 3. Load Locally, Test, and Generate Data
 ```bash
+# Install dependencies if not already installed
+npm install
+
+# Generate data.js from CSV files
 npm run update-data
+
+# Start local server to test
+npm run serve
 ```
+
+Open http://localhost:8080 and verify:
+- ✅ All data series are loading correctly
+- ✅ Toggle switches work for each component
+- ✅ Custom MNAV updates when toggling debt/preferred options
+- ✅ Zoom buttons (All, 1.5 Halvings, 2.5 Halvings) work properly
+
+### 4. Generate Screenshot and Deploy
+
+**Create preview image:**
+1. Open the live site in your browser
+2. Set a good zoom level showing recent data with rainbow bands
+3. Take a screenshot (1200x630px ideal for social media)
+4. Save as `preview.png` in project root
+
+**Commit and push:**
+```bash
+# Add all updated files
+git add *.csv preview.png
+
+# Commit with descriptive message
+git commit -m "Update data: [current date]"
+
+# Push to GitHub
+git push
+```
+
+The GitHub Actions workflow will automatically rebuild and deploy to GitHub Pages.
 
 ## Project Structure
 
 ```
-├── index.html          # Main HTML file
-├── chart.js           # Chart logic and configuration
-├── styles.css         # Styling
+├── index.html          # Main HTML file with component toggles
+├── chart.js           # Chart logic, custom MNAV calculator
+├── styles.css         # Styling with sidebar layout
 ├── data.js            # Generated data file (git-ignored)
-├── update-data.js     # Data update script
+├── update-data.js     # Data processing script
 ├── package.json       # Node.js dependencies
-├── *.csv             # Source data files
+├── preview.png        # Social media preview image
+├── MSTR.csv          # MicroStrategy main data
+├── STR*.csv          # Preferred stock series data
+├── btc_historical_prices.csv  # Bitcoin price history
 └── README.md         # This file
 ```
 
-## CSV Data Format
+## CSV Data Formats
 
 ### btc_historical_prices.csv
 - `date` - Date in YYYY-MM-DD format
 - `btc_price_usd` - Bitcoin price in USD
 
-### btc_mnav_merged.csv
-- `date` - Date in YYYY-MM-DD format
-- `spot btc_price_usd` - Spot BTC price
-- `MNAV` - MSTR Net Asset Value multiple
-- `MNAV_x_BTC_Price` - MNAV-adjusted price
-- `MSTR_BTC_Holdings` - MicroStrategy BTC holdings
-- `MSTR_Market_Cap_USD` - MicroStrategy market cap
+### MSTR.csv (from MicroStrategy)
+Key columns used:
+- `Date` - Date of data point
+- `Market Cap` - Market capitalization
+- `Debt` - Total debt
+- `Pref` - Total preferred stock value
+- `BTC` - Bitcoin holdings
+- `BTC Price` - Bitcoin spot price on that date
+
+### STR*.csv (Preferred Stock Series)
+- `Date` - Date of data point
+- `Series [C/D/F/K]` - Value of specific preferred stock series
 
 ## Development
 
