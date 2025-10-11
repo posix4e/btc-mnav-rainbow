@@ -220,18 +220,9 @@ async function loadData() {
     updateStats();
 }
 
-function generateExtendedDates(dates, months = 9) {
-    // Extend dates by N months (approximate as 30 days per month)
-    const result = [...dates];
-    if (!dates.length) return result;
-    const last = new Date(dates[dates.length - 1]);
-    const totalDays = months * 30;
-    for (let i = 1; i <= totalDays; i++) {
-        const d = new Date(last.getTime());
-        d.setDate(d.getDate() + i);
-        result.push(d.toISOString().split('T')[0]);
-    }
-    return result;
+function generateExtendedDates(dates, months = 0) {
+    // No extension - just return the actual dates
+    return [...dates];
 }
 
 // Regression presets removed; using fitted reference model from data.js
@@ -348,9 +339,9 @@ function calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includ
 function createChart() {
     const ctx = document.getElementById('rainbowChart').getContext('2d');
 
-    // Build extended date axis (9 months ahead)
+    // Build date axis from actual data
     const baseDates = btcData.map(d => d.date);
-    extendedDates = generateExtendedDates(baseDates, 9);
+    extendedDates = generateExtendedDates(baseDates);
 
     // Compute model baselines (center) from fitted reference equations
     const btcBaseline = computeModelSeries(extendedDates.length, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
@@ -678,6 +669,10 @@ function setupToggles() {
                 case '2.5H': // 2.5 halvings = ~10 years
                     minDate = new Date(today);
                     minDate.setDate(minDate.getDate() - (2.5 * daysPerHalving));
+                    break;
+                case '3.5H': // 3.5 halvings = ~14 years
+                    minDate = new Date(today);
+                    minDate.setDate(minDate.getDate() - (3.5 * daysPerHalving));
                     break;
                 case 'ALL':
                 default:
