@@ -20,6 +20,14 @@ const referenceRainbowHex = [
 ];
 
 function hexToRgba(hex, alpha) {
+    // Handle both hex and rgb formats
+    if (hex.startsWith('rgb')) {
+        // Extract RGB values from rgb(r, g, b) format
+        const matches = hex.match(/\d+/g);
+        if (matches && matches.length >= 3) {
+            return `rgba(${matches[0]}, ${matches[1]}, ${matches[2]}, ${alpha})`;
+        }
+    }
     const h = hex.replace('#', '');
     const r = parseInt(h.substring(0, 2), 16);
     const g = parseInt(h.substring(2, 4), 16);
@@ -39,6 +47,144 @@ const halvingDates = [
     { date: '2024-04-20', label: '4th Halving', blockReward: '3.125 BTC' },
     { date: '2028-04-01', label: '5th Halving (Est.)', blockReward: '1.5625 BTC' }
 ];
+
+// Rainbow color spectrum for smooth transitions
+const rainbowSpectrum = [
+    { r: 255, g: 0, b: 0 },      // Red
+    { r: 255, g: 127, b: 0 },    // Orange
+    { r: 255, g: 255, b: 0 },    // Yellow
+    { r: 0, g: 255, b: 0 },      // Green
+    { r: 0, g: 0, b: 255 },      // Blue
+    { r: 75, g: 0, b: 130 },     // Indigo
+    { r: 148, g: 0, b: 211 }     // Violet
+];
+
+// Interpolate between two colors
+function interpolateColor(color1, color2, factor) {
+    const r = Math.round(color1.r + (color2.r - color1.r) * factor);
+    const g = Math.round(color1.g + (color2.g - color1.g) * factor);
+    const b = Math.round(color1.b + (color2.b - color1.b) * factor);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+// Function to get rainbow color for a specific date based on halving cycle
+function getHalvingColor(dateStr) {
+    const date = new Date(dateStr);
+
+    // Find which halving period we're in
+    let startDate, endDate, periodIndex;
+
+    // Before first halving - genesis era
+    if (date < new Date(halvingDates[0].date)) {
+        startDate = new Date('2009-01-03'); // Bitcoin genesis block
+        endDate = new Date(halvingDates[0].date);
+        periodIndex = 0;
+    } else {
+        // Find the halving period
+        for (let i = 0; i < halvingDates.length - 1; i++) {
+            if (date >= new Date(halvingDates[i].date) && date < new Date(halvingDates[i + 1].date)) {
+                startDate = new Date(halvingDates[i].date);
+                endDate = new Date(halvingDates[i + 1].date);
+                periodIndex = i + 1;
+                break;
+            }
+        }
+
+        // After last known halving
+        if (!startDate && date >= new Date(halvingDates[halvingDates.length - 1].date)) {
+            startDate = new Date(halvingDates[halvingDates.length - 1].date);
+            // Estimate next halving ~4 years later
+            endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 4);
+            periodIndex = halvingDates.length;
+        }
+    }
+
+    if (!startDate || !endDate) {
+        return 'rgb(255, 159, 64)'; // Default orange
+    }
+
+    // Calculate progress through the halving period (0 to 1)
+    const totalTime = endDate - startDate;
+    const elapsed = date - startDate;
+    const progress = Math.max(0, Math.min(1, elapsed / totalTime));
+
+    // FULL RAINBOW CYCLE for each halving period
+    // Progress from 0 to 1 maps to full spectrum
+    const spectrumLength = rainbowSpectrum.length;
+    const colorIdx = progress * (spectrumLength - 1);
+
+    // Interpolate between adjacent colors in spectrum
+    const baseIdx = Math.floor(colorIdx);
+    const nextIdx = Math.min(baseIdx + 1, spectrumLength - 1);
+    const factor = colorIdx - baseIdx;
+
+    return interpolateColor(rainbowSpectrum[baseIdx], rainbowSpectrum[nextIdx], factor);
+}
+
+// Function to create segmented dataset for halving-based coloring
+function createHalvingSegmentedDataset(data, label) {
+    const segments = [];
+    const segmentSize = 10; // Create segments every N points for smoother transitions
+    let currentSegment = [];
+    let segmentCount = 0;
+
+    data.forEach((point, index) => {
+        if (point === null) return;
+
+        currentSegment.push(point);
+
+        // Create a new segment every segmentSize points or at the end
+        if (currentSegment.length >= segmentSize || index === data.length - 1) {
+            const midIndex = Math.max(0, index - Math.floor(currentSegment.length / 2));
+            const date = extendedDates[midIndex];
+            const color = getHalvingColor(date);
+
+            segments.push({
+                data: [...currentSegment],
+                color: color,
+                startIdx: index - currentSegment.length + 1
+            });
+
+            // Start new segment with overlap point for smooth transition
+            if (index < data.length - 1) {
+                currentSegment = [currentSegment[currentSegment.length - 1]];
+            } else {
+                currentSegment = [];
+            }
+        }
+    });
+
+    // Convert segments to datasets with gradient effect
+    const datasets = [];
+
+    segments.forEach((segment, i) => {
+        const segmentData = new Array(extendedDates.length).fill(null);
+
+        // Fill in the data for this segment's range
+        for (let j = 0; j < segment.data.length; j++) {
+            const idx = segment.startIdx + j;
+            if (idx >= 0 && idx < segmentData.length) {
+                segmentData[idx] = segment.data[j];
+            }
+        }
+
+        datasets.push({
+            label: i === 0 ? label : '', // Only show label for first segment
+            data: segmentData,
+            borderColor: segment.color,
+            backgroundColor: hexToRgba(segment.color, 0.1),
+            borderWidth: 3,
+            fill: false,
+            pointRadius: 0,
+            tension: 0.1, // Add slight tension for smoother curves
+            order: 1,
+            spanGaps: true // Allow spanning small gaps between segments
+        });
+    });
+
+    return datasets;
+}
 
 async function loadData() {
     // Use data from data.js
@@ -266,14 +412,22 @@ function createChart() {
 
     // No trend lines in reference chart
 
-    const datasets = [
-        // BTC Spot Price
-        {
+    // Prepare BTC spot data
+    const btcSpotData = extendedDates.map(date => {
+        const item = btcData.find(d => d.date === date);
+        return item ? item.price : null; // no future price
+    });
+
+    // Create datasets based on halving coloring preference
+    let btcDatasets = [];
+    const useHalvingColors = true; // Default to on, will be controlled by toggle
+
+    if (useHalvingColors) {
+        btcDatasets = createHalvingSegmentedDataset(btcSpotData, 'BTC Spot Price');
+    } else {
+        btcDatasets = [{
             label: 'BTC Spot Price',
-            data: extendedDates.map(date => {
-                const item = btcData.find(d => d.date === date);
-                return item ? item.price : null; // no future price
-            }),
+            data: btcSpotData,
             borderColor: 'rgb(255, 159, 64)',
             backgroundColor: 'rgba(255, 159, 64, 0.1)',
             borderWidth: 3,
@@ -282,7 +436,11 @@ function createChart() {
             tension: 0,
             order: 1,
             spanGaps: false
-        },
+        }];
+    }
+
+    const datasets = [
+        ...btcDatasets,
         // MSTR Naive MNAV (Market Cap only)
         {
             label: 'MSTR Naive MNAV',
@@ -408,11 +566,24 @@ function createChart() {
 
     // Setup toggles
     setupToggles();
+
+    // Store original BTC data for toggle switching
+    chart.btcSpotData = btcSpotData;
 }
 
 function setupToggles() {
+    // Store halving color state
+    let useHalvingColors = true;
+
     document.getElementById('showSpot').addEventListener('change', function(e) {
-        chart.data.datasets[0].hidden = !e.target.checked;
+        // Handle multiple BTC datasets when using halving colors
+        const btcDatasets = chart.data.datasets.filter(ds =>
+            ds.label === 'BTC Spot Price' || ds.label === ''
+        ).slice(0, useHalvingColors ? 5 : 1); // Max 5 segments for halvings
+
+        btcDatasets.forEach(ds => {
+            ds.hidden = !e.target.checked;
+        });
         chart.update();
     });
 
@@ -473,6 +644,45 @@ function setupToggles() {
                 chart.options.plugins.annotation.annotations[key].display = e.target.checked;
             }
         });
+        chart.update();
+    });
+
+    // Add halving colors toggle
+    document.getElementById('useHalvingColors').addEventListener('change', function(e) {
+        useHalvingColors = e.target.checked;
+
+        // Find and remove existing BTC datasets
+        const nonBtcDatasets = chart.data.datasets.filter(ds =>
+            ds.label !== 'BTC Spot Price' && ds.label !== '' || ds.order > 1
+        );
+
+        // Create new BTC datasets based on toggle
+        let newBtcDatasets;
+        if (useHalvingColors) {
+            newBtcDatasets = createHalvingSegmentedDataset(chart.btcSpotData, 'BTC Spot Price');
+        } else {
+            newBtcDatasets = [{
+                label: 'BTC Spot Price',
+                data: chart.btcSpotData,
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                borderWidth: 3,
+                fill: false,
+                pointRadius: 0,
+                tension: 0,
+                order: 1,
+                spanGaps: false
+            }];
+        }
+
+        // Check if BTC should be hidden
+        const shouldHideBtc = !document.getElementById('showSpot').checked;
+        newBtcDatasets.forEach(ds => {
+            ds.hidden = shouldHideBtc;
+        });
+
+        // Rebuild datasets array with BTC first
+        chart.data.datasets = [...newBtcDatasets, ...nonBtcDatasets];
         chart.update();
     });
 
