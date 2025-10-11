@@ -32,17 +32,30 @@ async function updateBtcData() {
         const btcData = [];
 
         // Skip header and process each line
+        const allData = [];
         for (let i = 1; i < lines.length; i++) {
             const [date, price] = lines[i].split(',');
             if (date && price) {
-                btcData.push({
+                allData.push({
                     date: date.trim(),
                     price: parseFloat(price.trim())
                 });
             }
         }
 
-        console.log(`Fetched ${btcData.length} BTC price records`);
+        // Filter to only keep monthly data points (last day of each month with data)
+        const monthlyData = new Map();
+        for (const entry of allData) {
+            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
+            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+        }
+
+        // Convert map to array and sort by date
+        const btcData = Array.from(monthlyData.values()).sort((a, b) =>
+            a.date.localeCompare(b.date)
+        );
+
+        console.log(`Fetched ${allData.length} total records, filtered to ${btcData.length} monthly data points`);
         console.log(`Date range: ${btcData[0].date} to ${btcData[btcData.length - 1].date}`);
 
         // Read existing data.js to preserve other data

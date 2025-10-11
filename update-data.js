@@ -68,21 +68,33 @@ function readBtcData(filepath) {
             skip_empty_lines: true
         });
 
-        const btcData = [];
+        const allBtcData = [];
         for (const row of records) {
             // Handle potential # prefix in column names
             const date = (row['# date'] || row['date'] || '').replace('# ', '');
             const price = parseFloat(row['btc_price_usd'] || row['price'] || 0);
 
             if (date && price > 0) {
-                btcData.push({
+                allBtcData.push({
                     date: date,
                     price: price
                 });
             }
         }
 
-        console.log(`✅ Read ${btcData.length} BTC price records`);
+        // Filter to only keep monthly data points (last day of each month with data)
+        const monthlyData = new Map();
+        for (const entry of allBtcData) {
+            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
+            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+        }
+
+        // Convert map to array and sort by date
+        const btcData = Array.from(monthlyData.values()).sort((a, b) =>
+            a.date.localeCompare(b.date)
+        );
+
+        console.log(`✅ Read ${allBtcData.length} total BTC records, filtered to ${btcData.length} monthly data points`);
         return btcData;
     } catch (error) {
         console.log(`❌ Error reading BTC data: ${error.message}`);
@@ -106,7 +118,7 @@ function readStrData(filepath, strName) {
             skip_empty_lines: true
         });
 
-        const strData = [];
+        const allStrData = [];
         for (const row of records) {
             const timestamp = row['timestamp'] || '';
             const date = timestamp.split(' ')[0];
@@ -117,7 +129,7 @@ function readStrData(filepath, strName) {
                 return Number.isFinite(n) ? n : null;
             };
 
-            strData.push({
+            allStrData.push({
                 date,
                 notional: toNum(row['notional']) || 0,
                 marketCap: toNum(row['market_cap']) || 0,
@@ -125,9 +137,19 @@ function readStrData(filepath, strName) {
             });
         }
 
-        // Sort by date
-        strData.sort((a, b) => a.date.localeCompare(b.date));
-        console.log(`✅ Read ${strData.length} ${strName} records`);
+        // Filter to only keep monthly data points (last day of each month with data)
+        const monthlyData = new Map();
+        for (const entry of allStrData) {
+            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
+            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+        }
+
+        // Convert map to array and sort by date
+        const strData = Array.from(monthlyData.values()).sort((a, b) =>
+            a.date.localeCompare(b.date)
+        );
+
+        console.log(`✅ Read ${allStrData.length} total ${strName} records, filtered to ${strData.length} monthly data points`);
         return strData;
     } catch (error) {
         console.log(`❌ Error reading ${strName} data: ${error.message}`);
@@ -220,8 +242,20 @@ function readMnavData(filepath) {
         // Sort by date (oldest first) since MSTR.csv is in reverse chronological order
         mnavData.sort((a, b) => a.date.localeCompare(b.date));
 
-        console.log(`✅ Read ${mnavData.length} MNAV records`);
-        return mnavData;
+        // Filter to only keep monthly data points (last day of each month with data)
+        const monthlyData = new Map();
+        for (const entry of mnavData) {
+            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
+            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+        }
+
+        // Convert map to array and sort by date
+        const filteredMnavData = Array.from(monthlyData.values()).sort((a, b) =>
+            a.date.localeCompare(b.date)
+        );
+
+        console.log(`✅ Read ${mnavData.length} total MNAV records, filtered to ${filteredMnavData.length} monthly data points`);
+        return filteredMnavData;
     } catch (error) {
         console.log(`❌ Error reading MNAV data: ${error.message}`);
         return [];
