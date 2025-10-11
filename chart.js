@@ -127,30 +127,53 @@ function createHalvingSegmentedDataset(data, label) {
     const segments = [];
     const segmentSize = 10; // Create segments every N points for smoother transitions
     let currentSegment = [];
+    let currentSegmentIndices = [];
     let segmentCount = 0;
 
     data.forEach((point, index) => {
-        if (point === null) return;
+        if (point === null) {
+            // When we hit a null, save the current segment if it has data
+            if (currentSegment.length > 0) {
+                const midIndex = currentSegmentIndices[Math.floor(currentSegmentIndices.length / 2)];
+                const date = extendedDates[midIndex];
+                const color = getHalvingColor(date);
+
+                segments.push({
+                    data: [...currentSegment],
+                    color: color,
+                    startIdx: currentSegmentIndices[0],
+                    indices: [...currentSegmentIndices]
+                });
+
+                currentSegment = [];
+                currentSegmentIndices = [];
+            }
+            return;
+        }
 
         currentSegment.push(point);
+        currentSegmentIndices.push(index);
 
         // Create a new segment every segmentSize points or at the end
         if (currentSegment.length >= segmentSize || index === data.length - 1) {
-            const midIndex = Math.max(0, index - Math.floor(currentSegment.length / 2));
+            const midIndex = currentSegmentIndices[Math.floor(currentSegmentIndices.length / 2)];
             const date = extendedDates[midIndex];
             const color = getHalvingColor(date);
 
             segments.push({
                 data: [...currentSegment],
                 color: color,
-                startIdx: index - currentSegment.length + 1
+                startIdx: currentSegmentIndices[0],
+                indices: [...currentSegmentIndices]
             });
 
             // Start new segment with overlap point for smooth transition
-            if (index < data.length - 1) {
+            if (index < data.length - 1 && currentSegment.length > 0) {
                 currentSegment = [currentSegment[currentSegment.length - 1]];
+                currentSegmentIndices = [currentSegmentIndices[currentSegmentIndices.length - 1]];
             } else {
                 currentSegment = [];
+                currentSegmentIndices = [];
             }
         }
     });
@@ -161,9 +184,9 @@ function createHalvingSegmentedDataset(data, label) {
     segments.forEach((segment, i) => {
         const segmentData = new Array(extendedDates.length).fill(null);
 
-        // Fill in the data for this segment's range
+        // Fill in the data for this segment's range using stored indices
         for (let j = 0; j < segment.data.length; j++) {
-            const idx = segment.startIdx + j;
+            const idx = segment.indices ? segment.indices[j] : (segment.startIdx + j);
             if (idx >= 0 && idx < segmentData.length) {
                 segmentData[idx] = segment.data[j];
             }
@@ -481,7 +504,21 @@ function createChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
+                            // Check if this is a BTC spot segment (order === 1)
+                            if (context.dataset.order === 1) {
+                                let label = 'BTC Spot Price: $';
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString('en-US', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                }
+                                return label;
+                            }
+
+                            // Skip datasets with empty labels (rainbow bands)
                             if (context.dataset.label === '') return null;
+
                             let label = context.dataset.label || '';
                             if (label) {
                                 label += ': $';
