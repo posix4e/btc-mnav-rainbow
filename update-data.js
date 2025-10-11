@@ -12,7 +12,7 @@ const https = require('https');
 const http = require('http');
 
 // Configuration
-const BTC_CSV_PATH = 'btc_historical_prices.csv';
+const BTC_CSV_PATH = 'dailysatprice_latest.csv';
 const MNAV_CSV_PATH = 'MSTR.csv';
 const OUTPUT_JS_PATH = 'data.js';
 const STR_FILES = {
