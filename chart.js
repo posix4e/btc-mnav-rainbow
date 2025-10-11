@@ -125,17 +125,17 @@ function getHalvingColor(dateStr) {
 // Function to create segmented dataset for halving-based coloring
 function createHalvingSegmentedDataset(data, label) {
     const segments = [];
-    const segmentSize = 10; // Create segments every N points for smoother transitions
+    const segmentSize = 5; // Smaller segments for smoother color transitions
     let currentSegment = [];
     let currentSegmentIndices = [];
-    let segmentCount = 0;
 
     data.forEach((point, index) => {
         if (point === null) {
             // When we hit a null, save the current segment if it has data
             if (currentSegment.length > 0) {
-                const midIndex = currentSegmentIndices[Math.floor(currentSegmentIndices.length / 2)];
-                const date = extendedDates[midIndex];
+                // Use the last data point's date for the segment color
+                const colorIndex = currentSegmentIndices[currentSegmentIndices.length - 1];
+                const date = extendedDates[colorIndex];
                 const color = getHalvingColor(date);
 
                 segments.push({
@@ -156,8 +156,9 @@ function createHalvingSegmentedDataset(data, label) {
 
         // Create a new segment every segmentSize points or at the end
         if (currentSegment.length >= segmentSize || index === data.length - 1) {
-            const midIndex = currentSegmentIndices[Math.floor(currentSegmentIndices.length / 2)];
-            const date = extendedDates[midIndex];
+            // Use the last data point's date for the segment color for smoother progression
+            const colorIndex = currentSegmentIndices[currentSegmentIndices.length - 1];
+            const date = extendedDates[colorIndex];
             const color = getHalvingColor(date);
 
             segments.push({
