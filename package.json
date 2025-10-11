@@ -23,8 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "csv-parse": "^5.5.0",
-    "http-server": "^14.1.1",
-    "puppeteer": "^22.15.0"
+    "http-server": "^14.1.1"
   },
   "repository": {
     "type": "git",
