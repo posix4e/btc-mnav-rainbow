@@ -49,14 +49,16 @@ const halvingDates = [
 ];
 
 // Rainbow color spectrum for smooth transitions
+// Starts at Red right after each halving
 const rainbowSpectrum = [
-    { r: 255, g: 0, b: 0 },      // Red
+    { r: 255, g: 0, b: 0 },      // Red - at halving
     { r: 255, g: 127, b: 0 },    // Orange
     { r: 255, g: 255, b: 0 },    // Yellow
     { r: 0, g: 255, b: 0 },      // Green
     { r: 0, g: 0, b: 255 },      // Blue
     { r: 75, g: 0, b: 130 },     // Indigo
-    { r: 148, g: 0, b: 211 }     // Violet
+    { r: 148, g: 0, b: 211 },    // Violet
+    { r: 255, g: 0, b: 0 }       // Red - returns to red at next halving
 ];
 
 // Interpolate between two colors
