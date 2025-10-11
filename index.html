@@ -42,57 +42,15 @@
         <h1>🌈 Bitcoin Rainbow Chart</h1>
         <p class="subtitle">Comparing BTC Spot Price vs MSTR MNAV-Adjusted Price</p>
 
-        <div class="controls">
-            <div class="toggle-group">
-                <input type="checkbox" id="showSpot" checked>
-                <label for="showSpot">BTC Spot Price</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showNaiveMNAV" checked>
-                <label for="showNaiveMNAV">Naive MNAV</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showAdvancedMNAV" checked>
-                <label for="showAdvancedMNAV">Advanced MNAV</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showSpotRainbow" checked>
-                <label for="showSpotRainbow">Rainbow Bands</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showHalvings" checked>
-                <label for="showHalvings">Halving Lines</label>
-            </div>
-        </div>
-
-        <div class="controls" style="margin-top: 10px; background: rgba(100, 100, 100, 0.1); padding: 10px; border-radius: 8px;">
-            <div style="font-weight: bold; margin-bottom: 10px;">Custom MNAV Components:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <div class="toggle-group" style="background: rgba(255, 99, 132, 0.1);">
-                    <input type="checkbox" id="includeDebt" checked>
-                    <label for="includeDebt">+ Debt</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(54, 162, 235, 0.1);">
-                    <input type="checkbox" id="includeSTRC" checked>
-                    <label for="includeSTRC">+ STRC</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(255, 206, 86, 0.1);">
-                    <input type="checkbox" id="includeSTRD" checked>
-                    <label for="includeSTRD">+ STRD</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(75, 192, 192, 0.1);">
-                    <input type="checkbox" id="includeSTRF" checked>
-                    <label for="includeSTRF">+ STRF</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(153, 102, 255, 0.1);">
-                    <input type="checkbox" id="includeSTRK" checked>
-                    <label for="includeSTRK">+ STRK</label>
-                </div>
-            </div>
-            <div class="toggle-group" style="margin-top: 10px;">
-                <input type="checkbox" id="showCustomMNAV" checked>
-                <label for="showCustomMNAV">Show Custom MNAV</label>
-            </div>
+        <div class="key-insight" style="margin: 30px 0;">
+            <h3>🔑 Why This Chart Matters</h3>
+            <p>Bitcoin's spot price peaked at the yellow "HODL" band this cycle—well below the red "bubble" zone of previous cycles. But MicroStrategy's MNAV price reached the red zone, hitting those same euphoric levels. The gains didn't disappear; they shifted to MSTR's leveraged premium.</p>
+            <p class="formula">
+                <strong>The Pattern:</strong> Bitcoin cycles still deliver 10-20x returns, but now through two channels:<br>
+                • Spot price: 3-4x gain<br>
+                • MSTR premium: Additional 3-5x multiplier<br>
+                • Combined: Same rainbow targets as previous cycles
+            </p>
         </div>
 
         <div class="chart-container">
@@ -150,6 +108,59 @@
             </div>
         </div>
 
+        <div class="controls">
+            <div class="toggle-group">
+                <input type="checkbox" id="showSpot" checked>
+                <label for="showSpot">BTC Spot Price</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showNaiveMNAV" checked>
+                <label for="showNaiveMNAV">Naive MNAV</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showAdvancedMNAV" checked>
+                <label for="showAdvancedMNAV">Advanced MNAV</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showSpotRainbow" checked>
+                <label for="showSpotRainbow">Rainbow Bands</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showHalvings" checked>
+                <label for="showHalvings">Halving Lines</label>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 10px; background: rgba(100, 100, 100, 0.1); padding: 10px; border-radius: 8px;">
+            <div style="font-weight: bold; margin-bottom: 10px;">Custom MNAV Components:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <div class="toggle-group" style="background: rgba(255, 99, 132, 0.1);">
+                    <input type="checkbox" id="includeDebt" checked>
+                    <label for="includeDebt">+ Debt</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(54, 162, 235, 0.1);">
+                    <input type="checkbox" id="includeSTRC" checked>
+                    <label for="includeSTRC">+ STRC</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(255, 206, 86, 0.1);">
+                    <input type="checkbox" id="includeSTRD" checked>
+                    <label for="includeSTRD">+ STRD</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(75, 192, 192, 0.1);">
+                    <input type="checkbox" id="includeSTRF" checked>
+                    <label for="includeSTRF">+ STRF</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(153, 102, 255, 0.1);">
+                    <input type="checkbox" id="includeSTRK" checked>
+                    <label for="includeSTRK">+ STRK</label>
+                </div>
+            </div>
+            <div class="toggle-group" style="margin-top: 10px;">
+                <input type="checkbox" id="showCustomMNAV" checked>
+                <label for="showCustomMNAV">Show Custom MNAV</label>
+            </div>
+        </div>
+
         <div class="stats" id="stats"></div>
 
     <div class="explainer">
@@ -185,16 +196,6 @@
                 <h3>🔄 The Reflexive Cycle</h3>
                 <p>Higher MSTR price → Issue more converts → Buy more BTC → BTC price rises → MSTR premium expands → Higher MSTR price. This reflexive loop accelerates during bull markets, creating the exponential moves that match historical rainbow patterns even when spot markets are more mature and less volatile.</p>
             </div>
-        </div>
-
-        <div class="key-insight">
-            <h3>🔑 The Key Insight</h3>
-            <p>The rainbow chart isn't broken—the market just found a new expression mechanism. What used to manifest as pure spot price discovery now flows through corporate financial engineering. The MNAV-adjusted price reveals that cycle dynamics remain intact; they're just wearing a three-piece suit instead of a hoodie.</p>
-            <p class="formula">
-                <strong>Historical Pattern:</strong> Halving → Spot 10-20x → Rainbow Red Zone<br>
-                <strong>New Pattern:</strong> Halving → Spot 3-4x + MNAV Premium 3-5x → Rainbow Red Zone<br>
-                <strong>Result:</strong> Same rainbow levels, different path
-            </p>
         </div>
     </div>
     </div>
