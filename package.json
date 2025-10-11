@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "update-data": "node update-data.js",
+    "fetch-btc": "node fetch-dailysatprice.js",
     "fetch-share-classes": "node scripts/fetch-share-classes.js",
     "serve": "npx http-server -p 8080 -c-1",
     "dev": "npx http-server -p 8080 -c-1",

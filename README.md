@@ -40,9 +40,10 @@ Then open http://localhost:8080 in your browser
 Follow these steps to update the chart with fresh data:
 
 ### 1. Update Bitcoin Spot Price
-- Download latest Bitcoin historical prices from a reliable source
-- Ensure the CSV has columns: `date` (YYYY-MM-DD) and `btc_price_usd`
-- Save as `btc_historical_prices.csv` in project root
+```bash
+npm run fetch-btc
+```
+This fetches the latest Bitcoin price data from [dailysatprice.com](https://dailysatprice.com) which provides daily BTC prices from 2013 to present.
 
 ### 2. Download MicroStrategy Data Files
 Visit [MicroStrategy's Bitcoin Holdings page](https://www.microstrategy.com/bitcoin-holdings) and download:
