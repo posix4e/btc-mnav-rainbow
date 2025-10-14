@@ -4,6 +4,7 @@ vendor/
 
 # Generated files
 data.js
+dailysatprice_latest.csv
 
 # Logs
 *.log
