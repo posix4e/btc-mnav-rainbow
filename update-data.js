@@ -27,6 +27,20 @@ const STR_FILES = {
 // const MNAV_CSV_URL = 'https://example.com/MSTR.csv';
 
 /**
+ * Get ISO week number and year from date string (YYYY-MM-DD)
+ * Returns a string like "2025-W43"
+ */
+function getISOWeek(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00Z');
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+/**
  * Download file from URL
  */
 function downloadFile(url, filepath) {
@@ -82,19 +96,19 @@ function readBtcData(filepath) {
             }
         }
 
-        // Filter to only keep monthly data points (last day of each month with data)
-        const monthlyData = new Map();
+        // Filter to only keep weekly data points (last day of each week with data)
+        const weeklyData = new Map();
         for (const entry of allBtcData) {
-            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
-            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+            const isoWeek = getISOWeek(entry.date); // YYYY-Www format
+            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
         }
 
         // Convert map to array and sort by date
-        const btcData = Array.from(monthlyData.values()).sort((a, b) =>
+        const btcData = Array.from(weeklyData.values()).sort((a, b) =>
             a.date.localeCompare(b.date)
         );
 
-        console.log(`✅ Read ${allBtcData.length} total BTC records, filtered to ${btcData.length} monthly data points`);
+        console.log(`✅ Read ${allBtcData.length} total BTC records, filtered to ${btcData.length} weekly data points`);
         return btcData;
     } catch (error) {
         console.log(`❌ Error reading BTC data: ${error.message}`);
@@ -137,19 +151,19 @@ function readStrData(filepath, strName) {
             });
         }
 
-        // Filter to only keep monthly data points (last day of each month with data)
-        const monthlyData = new Map();
+        // Filter to only keep weekly data points (last day of each week with data)
+        const weeklyData = new Map();
         for (const entry of allStrData) {
-            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
-            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+            const isoWeek = getISOWeek(entry.date); // YYYY-Www format
+            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
         }
 
         // Convert map to array and sort by date
-        const strData = Array.from(monthlyData.values()).sort((a, b) =>
+        const strData = Array.from(weeklyData.values()).sort((a, b) =>
             a.date.localeCompare(b.date)
         );
 
-        console.log(`✅ Read ${allStrData.length} total ${strName} records, filtered to ${strData.length} monthly data points`);
+        console.log(`✅ Read ${allStrData.length} total ${strName} records, filtered to ${strData.length} weekly data points`);
         return strData;
     } catch (error) {
         console.log(`❌ Error reading ${strName} data: ${error.message}`);
@@ -242,19 +256,19 @@ function readMnavData(filepath) {
         // Sort by date (oldest first) since MSTR.csv is in reverse chronological order
         mnavData.sort((a, b) => a.date.localeCompare(b.date));
 
-        // Filter to only keep monthly data points (last day of each month with data)
-        const monthlyData = new Map();
+        // Filter to only keep weekly data points (last day of each week with data)
+        const weeklyData = new Map();
         for (const entry of mnavData) {
-            const yearMonth = entry.date.substring(0, 7); // YYYY-MM format
-            monthlyData.set(yearMonth, entry); // This will keep the last entry for each month
+            const isoWeek = getISOWeek(entry.date); // YYYY-Www format
+            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
         }
 
         // Convert map to array and sort by date
-        const filteredMnavData = Array.from(monthlyData.values()).sort((a, b) =>
+        const filteredMnavData = Array.from(weeklyData.values()).sort((a, b) =>
             a.date.localeCompare(b.date)
         );
 
-        console.log(`✅ Read ${mnavData.length} total MNAV records, filtered to ${filteredMnavData.length} monthly data points`);
+        console.log(`✅ Read ${mnavData.length} total MNAV records, filtered to ${filteredMnavData.length} weekly data points`);
         return filteredMnavData;
     } catch (error) {
         console.log(`❌ Error reading MNAV data: ${error.message}`);
