@@ -158,6 +158,25 @@
             </div>
         </div>
 
+        <div class="controls" id="cycleOverlayControls" style="margin-top: 10px; background: rgba(70, 130, 180, 0.1); padding: 10px; border-radius: 8px; display: none;">
+            <div style="font-weight: bold; margin-bottom: 10px;">🔄 Cycle Comparison</div>
+            <div style="font-size: 0.9em; margin-bottom: 10px; opacity: 0.8;">Overlays previous cycles aligned by days since their halving</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <div class="toggle-group" style="background: rgba(255, 140, 0, 0.1);">
+                    <input type="checkbox" id="showCycle1">
+                    <label for="showCycle1">1st Cycle (2012)</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(255, 215, 0, 0.1);">
+                    <input type="checkbox" id="showCycle2">
+                    <label for="showCycle2">2nd Cycle (2016)</label>
+                </div>
+                <div class="toggle-group" style="background: rgba(0, 206, 209, 0.1);">
+                    <input type="checkbox" id="showCycle3">
+                    <label for="showCycle3">3rd Cycle (2020)</label>
+                </div>
+            </div>
+        </div>
+
         <div class="stats" id="stats"></div>
 
     <div class="explainer">

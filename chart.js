@@ -222,6 +222,62 @@ async function loadData() {
     updateStats();
 }
 
+/**
+ * Generate cycle overlay data aligned by days since halving
+ * This aligns previous cycles to the current (4th) halving cycle's timeline
+ * @param {number} cycleIndex - Index of the cycle to overlay (0-2 for 1st-3rd halving)
+ * @returns {Array} Array of {date, price} aligned to 4th halving timeline
+ */
+function generateCycleOverlay(cycleIndex) {
+    const cycleHalving = halvingDates[cycleIndex];
+    const currentHalving = halvingDates[3]; // 4th halving (2024-04-20)
+    const nextCycleHalving = halvingDates[cycleIndex + 1];
+
+    if (!cycleHalving || !currentHalving || !nextCycleHalving) return [];
+
+    const cycleStart = new Date(cycleHalving.date);
+    const cycleEnd = new Date(nextCycleHalving.date);
+    const currentHalvingDate = new Date(currentHalving.date);
+
+    // Find BTC price at the historical cycle's halving date
+    const cycleHalvingData = btcData.find(d => d.date === cycleHalving.date) ||
+                             btcData.find(d => new Date(d.date) >= cycleStart);
+    if (!cycleHalvingData) return [];
+    const cycleStartPrice = cycleHalvingData.price;
+
+    // Find BTC price at the current (4th) halving date
+    const currentHalvingData = btcData.find(d => d.date === currentHalving.date) ||
+                               btcData.find(d => new Date(d.date) >= currentHalvingDate);
+    if (!currentHalvingData) return [];
+    const currentStartPrice = currentHalvingData.price;
+
+    // Extract all data from the historical cycle
+    const cycleData = btcData.filter(d => {
+        const date = new Date(d.date);
+        return date >= cycleStart && date < cycleEnd;
+    });
+
+    // Align to current cycle timeline by days since halving
+    const overlayData = cycleData.map(d => {
+        const historicalDate = new Date(d.date);
+        const daysFromHalving = Math.floor((historicalDate - cycleStart) / (1000 * 60 * 60 * 24));
+
+        // Calculate aligned date relative to 4th halving
+        const alignedDate = new Date(currentHalvingDate);
+        alignedDate.setDate(alignedDate.getDate() + daysFromHalving);
+
+        // Normalize price: scale historical cycle to start at current cycle's halving price
+        const normalizedPrice = (d.price / cycleStartPrice) * currentStartPrice;
+
+        return {
+            date: alignedDate.toISOString().split('T')[0],
+            price: normalizedPrice
+        };
+    });
+
+    return overlayData;
+}
+
 function generateExtendedDates(dates, months = 0) {
     // No extension - just return the actual dates
     return [...dates];
@@ -623,6 +679,58 @@ function setupToggles() {
     // Initialize custom MNAV with current checkbox state
     updateCustomMNAV();
 
+    // Function to update cycle overlays
+    // All cycles are aligned to the 4th halving (2024-04-20) by days since halving
+    function updateCycleOverlays() {
+        const showCycle1 = document.getElementById('showCycle1').checked;
+        const showCycle2 = document.getElementById('showCycle2').checked;
+        const showCycle3 = document.getElementById('showCycle3').checked;
+
+        // Remove existing overlay datasets
+        chart.data.datasets = chart.data.datasets.filter(ds => !ds.isCycleOverlay);
+
+        // Add new overlay datasets if checked
+        const overlays = [
+            { index: 0, show: showCycle1, label: '1st Cycle (2012)', color: 'rgb(255, 140, 0)' },
+            { index: 1, show: showCycle2, label: '2nd Cycle (2016)', color: 'rgb(255, 215, 0)' },
+            { index: 2, show: showCycle3, label: '3rd Cycle (2020)', color: 'rgb(0, 206, 209)' }
+        ];
+
+        overlays.forEach(overlay => {
+            if (overlay.show) {
+                const overlayData = generateCycleOverlay(overlay.index);
+
+                // Map overlay data to chart dates
+                const mappedData = extendedDates.map(date => {
+                    const match = overlayData.find(d => d.date === date);
+                    return match ? match.price : null;
+                });
+
+                chart.data.datasets.push({
+                    label: overlay.label,
+                    data: mappedData,
+                    borderColor: overlay.color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    order: 4,
+                    spanGaps: true,
+                    isCycleOverlay: true
+                });
+            }
+        });
+
+        chart.update();
+    }
+
+    // Add event listeners for cycle overlay controls
+    document.getElementById('showCycle1').addEventListener('change', updateCycleOverlays);
+    document.getElementById('showCycle2').addEventListener('change', updateCycleOverlays);
+    document.getElementById('showCycle3').addEventListener('change', updateCycleOverlays);
+
     document.getElementById('showSpotRainbow').addEventListener('change', function(e) {
         // Hide/show all rainbow band datasets (order >= 10)
         chart.data.datasets.forEach(ds => {
@@ -692,6 +800,17 @@ function setupToggles() {
                 chart.options.scales.x.max = maxDate.toISOString().split('T')[0];
             } else {
                 chart.options.scales.x.max = undefined;
+            }
+
+            // Show cycle overlay controls only on 1.5H zoom
+            const cycleControls = document.getElementById('cycleOverlayControls');
+            if (range === '1.5H') {
+                cycleControls.style.display = 'block';
+                updateCycleOverlays(); // Initialize overlays
+            } else {
+                cycleControls.style.display = 'none';
+                // Remove overlay datasets when leaving 1.5H view
+                chart.data.datasets = chart.data.datasets.filter(ds => !ds.isCycleOverlay);
             }
 
             chart.update('none'); // Use 'none' mode for immediate update

@@ -167,6 +167,40 @@ input[type="checkbox"] {
     border-color: transparent;
 }
 
+/* Special indicator for 1.5H button with cycle comparison feature */
+.zoom-btn[data-range="1.5H"] {
+    position: relative;
+    border: 2px solid #4a9eff;
+}
+
+.zoom-btn[data-range="1.5H"]::after {
+    content: "🔄";
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    font-size: 0.9em;
+    background: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.zoom-btn[data-range="1.5H"]:hover {
+    border-color: #667eea;
+}
+
+.zoom-btn[data-range="1.5H"].active {
+    border-color: transparent;
+}
+
+.zoom-btn[data-range="1.5H"].active::after {
+    background: #4a9eff;
+}
+
 .key-title {
     font-weight: bold;
     color: #2d3748;
