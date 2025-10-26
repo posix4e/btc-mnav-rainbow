@@ -41,6 +41,19 @@ function getISOWeek(dateStr) {
 }
 
 /**
+ * Get Monday of the ISO week for a given date string (YYYY-MM-DD)
+ * Returns a date string in YYYY-MM-DD format representing Monday of that week
+ */
+function getMondayOfWeek(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00Z');
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7; // Make Sunday = 7
+    const monday = new Date(d);
+    monday.setUTCDate(d.getUTCDate() - dayNum + 1); // Go back to Monday
+    return monday.toISOString().split('T')[0];
+}
+
+/**
  * Download file from URL
  */
 function downloadFile(url, filepath) {
@@ -97,10 +110,12 @@ function readBtcData(filepath) {
         }
 
         // Filter to only keep weekly data points (last day of each week with data)
+        // Normalize all dates to Monday of that week for consistent matching
         const weeklyData = new Map();
         for (const entry of allBtcData) {
             const isoWeek = getISOWeek(entry.date); // YYYY-Www format
-            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
+            const normalizedDate = getMondayOfWeek(entry.date);
+            weeklyData.set(isoWeek, { date: normalizedDate, price: entry.price }); // Normalize to Monday
         }
 
         // Convert map to array and sort by date
@@ -152,10 +167,17 @@ function readStrData(filepath, strName) {
         }
 
         // Filter to only keep weekly data points (last day of each week with data)
+        // Normalize all dates to Monday of that week for consistent matching
         const weeklyData = new Map();
         for (const entry of allStrData) {
             const isoWeek = getISOWeek(entry.date); // YYYY-Www format
-            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
+            const normalizedDate = getMondayOfWeek(entry.date);
+            weeklyData.set(isoWeek, {
+                date: normalizedDate,
+                notional: entry.notional,
+                marketCap: entry.marketCap,
+                price: entry.price
+            });
         }
 
         // Convert map to array and sort by date
@@ -257,10 +279,15 @@ function readMnavData(filepath) {
         mnavData.sort((a, b) => a.date.localeCompare(b.date));
 
         // Filter to only keep weekly data points (last day of each week with data)
+        // Normalize all dates to Monday of that week for consistent matching
         const weeklyData = new Map();
         for (const entry of mnavData) {
             const isoWeek = getISOWeek(entry.date); // YYYY-Www format
-            weeklyData.set(isoWeek, entry); // This will keep the last entry for each week
+            const normalizedDate = getMondayOfWeek(entry.date);
+            weeklyData.set(isoWeek, {
+                ...entry,
+                date: normalizedDate // Normalize to Monday
+            });
         }
 
         // Convert map to array and sort by date
