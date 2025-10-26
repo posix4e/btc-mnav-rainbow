@@ -726,9 +726,30 @@ function setupToggles() {
                     return overlayMap[date] || null;
                 });
 
-                // Count non-null values for debugging
+                // Count non-null values and show date range for debugging
                 const nonNullCount = mappedData.filter(v => v !== null).length;
-                console.log(`${overlay.label}: ${nonNullCount} data points mapped`);
+                const firstNonNull = extendedDates.find((date, i) => mappedData[i] !== null);
+                const lastNonNull = extendedDates.reverse().find((date, i) => mappedData[mappedData.length - 1 - i] !== null);
+                extendedDates.reverse(); // Restore order
+
+                const currentHalving = new Date(halvingDates[3].date);
+                const historicalHalving = new Date(halvingDates[overlay.index].date);
+
+                if (firstNonNull && lastNonNull) {
+                    const firstDate = new Date(firstNonNull);
+                    const lastDate = new Date(lastNonNull);
+                    const firstDays = Math.floor((firstDate - currentHalving) / (1000 * 60 * 60 * 24));
+                    const lastDays = Math.floor((lastDate - currentHalving) / (1000 * 60 * 60 * 24));
+
+                    const histFirstDate = new Date(historicalHalving);
+                    histFirstDate.setDate(histFirstDate.getDate() + firstDays);
+                    const histLastDate = new Date(historicalHalving);
+                    histLastDate.setDate(histLastDate.getDate() + lastDays);
+
+                    console.log(`${overlay.label}: ${nonNullCount} points | Chart: ${firstNonNull} to ${lastNonNull} (${firstDays} to ${lastDays} days from halving) | Historical: ${histFirstDate.toISOString().split('T')[0]} to ${histLastDate.toISOString().split('T')[0]}`);
+                } else {
+                    console.log(`${overlay.label}: ${nonNullCount} data points mapped`);
+                }
 
                 chart.data.datasets.push({
                     label: overlay.label,
