@@ -224,11 +224,12 @@ async function loadData() {
 
 /**
  * Generate cycle overlay data aligned by days since halving
- * This aligns previous cycles to the current (4th) halving cycle's timeline
+ * Maps historical cycle data to current chart dates based on days from halving
  * @param {number} cycleIndex - Index of the cycle to overlay (0-2 for 1st-3rd halving)
+ * @param {Array} chartDates - Array of dates currently displayed on chart
  * @returns {Object} Object with date->price mapping for overlay
  */
-function generateCycleOverlay(cycleIndex) {
+function generateCycleOverlay(cycleIndex, chartDates) {
     const cycleHalving = halvingDates[cycleIndex];
     const currentHalving = halvingDates[3]; // 4th halving (2024-04-20)
     const nextCycleHalving = halvingDates[cycleIndex + 1];
@@ -236,7 +237,6 @@ function generateCycleOverlay(cycleIndex) {
     if (!cycleHalving || !currentHalving || !nextCycleHalving) return {};
 
     const cycleStart = new Date(cycleHalving.date);
-    const cycleEnd = new Date(nextCycleHalving.date);
     const currentHalvingDate = new Date(currentHalving.date);
 
     // Find BTC price at the historical cycle's halving date
@@ -251,28 +251,49 @@ function generateCycleOverlay(cycleIndex) {
     if (!currentHalvingData) return {};
     const currentStartPrice = currentHalvingData.price;
 
-    // Extract all data from the historical cycle
-    const cycleData = btcData.filter(d => {
-        const date = new Date(d.date);
-        return date >= cycleStart && date < cycleEnd;
-    });
-
     // Create a map of aligned dates to prices
     const overlayMap = {};
 
-    cycleData.forEach(d => {
-        const historicalDate = new Date(d.date);
-        const daysFromHalving = Math.floor((historicalDate - cycleStart) / (1000 * 60 * 60 * 24));
+    // For each date in the chart, calculate the equivalent historical date
+    chartDates.forEach(chartDate => {
+        const currentDate = new Date(chartDate);
+        // Days from current halving (can be negative if before halving)
+        const daysFromCurrentHalving = Math.floor((currentDate - currentHalvingDate) / (1000 * 60 * 60 * 24));
 
-        // Calculate aligned date relative to 4th halving
-        const alignedDate = new Date(currentHalvingDate);
-        alignedDate.setDate(alignedDate.getDate() + daysFromHalving);
-        const alignedDateStr = alignedDate.toISOString().split('T')[0];
+        // Calculate equivalent date in historical cycle
+        const historicalDate = new Date(cycleStart);
+        historicalDate.setDate(historicalDate.getDate() + daysFromCurrentHalving);
+        const historicalDateStr = historicalDate.toISOString().split('T')[0];
 
-        // Normalize price: scale historical cycle to start at current cycle's halving price
-        const normalizedPrice = (d.price / cycleStartPrice) * currentStartPrice;
+        // Find historical BTC price for that date (or nearest date within 7 days)
+        let historicalData = btcData.find(d => d.date === historicalDateStr);
 
-        overlayMap[alignedDateStr] = normalizedPrice;
+        // If exact match not found, search for nearest date within +/- 7 days
+        if (!historicalData) {
+            const targetDate = new Date(historicalDateStr);
+            let closestData = null;
+            let minDiff = Infinity;
+
+            btcData.forEach(d => {
+                const dataDate = new Date(d.date);
+                const diff = Math.abs(dataDate - targetDate);
+                const daysDiff = diff / (1000 * 60 * 60 * 24);
+
+                // Only consider dates within 7 days
+                if (daysDiff <= 7 && diff < minDiff) {
+                    minDiff = diff;
+                    closestData = d;
+                }
+            });
+
+            historicalData = closestData;
+        }
+
+        if (historicalData && historicalData.price > 0) {
+            // Normalize price: scale historical cycle to start at current cycle's halving price
+            const normalizedPrice = (historicalData.price / cycleStartPrice) * currentStartPrice;
+            overlayMap[chartDate] = normalizedPrice;
+        }
     });
 
     return overlayMap;
@@ -698,7 +719,7 @@ function setupToggles() {
 
         overlays.forEach(overlay => {
             if (overlay.show) {
-                const overlayMap = generateCycleOverlay(overlay.index);
+                const overlayMap = generateCycleOverlay(overlay.index, extendedDates);
 
                 // Map overlay data to chart dates using the date map
                 const mappedData = extendedDates.map(date => {
