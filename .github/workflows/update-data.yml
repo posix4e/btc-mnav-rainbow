@@ -44,14 +44,23 @@ jobs:
     - name: Generate data.js from CSV files
       run: npm run update-data
 
+    - name: Prepare deployment directory
+      run: |
+        mkdir -p deploy
+        # Copy all files except node_modules and hidden files
+        rsync -av --exclude='node_modules' --exclude='.git' --exclude='deploy' --exclude='.github' . deploy/
+        # Ensure data.js is included (it's generated but in .gitignore)
+        cp data.js deploy/data.js
+        ls -la deploy/
+
     - name: Setup GitHub Pages
       uses: actions/configure-pages@v4
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        # Upload entire repository after data.js is generated
-        path: '.'
+        # Upload deployment directory with generated data.js
+        path: 'deploy'
 
     - name: Deploy to GitHub Pages
       id: deployment
