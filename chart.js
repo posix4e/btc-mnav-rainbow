@@ -710,6 +710,19 @@ function setupToggles() {
         // Remove existing overlay datasets
         chart.data.datasets = chart.data.datasets.filter(ds => !ds.isCycleOverlay);
 
+        // Get the currently visible date range from the chart
+        const xScale = chart.scales.x;
+        const minDate = xScale.min ? new Date(xScale.min) : new Date(extendedDates[0]);
+        const maxDate = xScale.max ? new Date(xScale.max) : new Date(extendedDates[extendedDates.length - 1]);
+
+        // Filter to only dates visible in current zoom
+        const visibleDates = extendedDates.filter(date => {
+            const d = new Date(date);
+            return d >= minDate && d <= maxDate;
+        });
+
+        console.log(`Visible date range: ${minDate.toISOString().split('T')[0]} to ${maxDate.toISOString().split('T')[0]} (${visibleDates.length} dates)`);
+
         // Add new overlay datasets if checked
         const overlays = [
             { index: 0, show: showCycle1, label: '1st Cycle (2012)', color: 'rgb(255, 140, 0)' },
@@ -719,7 +732,7 @@ function setupToggles() {
 
         overlays.forEach(overlay => {
             if (overlay.show) {
-                const overlayMap = generateCycleOverlay(overlay.index, extendedDates);
+                const overlayMap = generateCycleOverlay(overlay.index, visibleDates);
 
                 // Map overlay data to chart dates using the date map
                 const mappedData = extendedDates.map(date => {
@@ -728,9 +741,8 @@ function setupToggles() {
 
                 // Count non-null values and show date range for debugging
                 const nonNullCount = mappedData.filter(v => v !== null).length;
-                const firstNonNull = extendedDates.find((date, i) => mappedData[i] !== null);
-                const lastNonNull = extendedDates.reverse().find((date, i) => mappedData[mappedData.length - 1 - i] !== null);
-                extendedDates.reverse(); // Restore order
+                const firstNonNull = visibleDates.find(date => overlayMap[date] !== undefined);
+                const lastNonNull = visibleDates.slice().reverse().find(date => overlayMap[date] !== undefined);
 
                 const currentHalving = new Date(halvingDates[3].date);
                 const historicalHalving = new Date(halvingDates[overlay.index].date);
