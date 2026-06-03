@@ -299,9 +299,16 @@ function generateCycleOverlay(cycleIndex, chartDates) {
     return overlayMap;
 }
 
-function generateExtendedDates(dates, months = 0) {
-    // No extension - just return the actual dates
-    return [...dates];
+function generateExtendedDates(dates, weeks = 0) {
+    const result = [...dates];
+    if (!weeks || dates.length === 0) return result;
+    const last = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+    for (let i = 1; i <= weeks; i++) {
+        const d = new Date(last);
+        d.setUTCDate(d.getUTCDate() + i * 7);
+        result.push(d.toISOString().split('T')[0]);
+    }
+    return result;
 }
 
 // Regression presets removed; using fitted reference model from data.js
@@ -418,9 +425,11 @@ function calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includ
 function createChart() {
     const ctx = document.getElementById('rainbowChart').getContext('2d');
 
-    // Build date axis from actual data
+    // Build date axis from actual data, extending into the future if forecast is on
+    const forecastEl = document.getElementById('showForecast');
+    const forecastWeeks = (forecastEl && forecastEl.checked) ? 52 : 0;
     const baseDates = btcData.map(d => d.date);
-    extendedDates = generateExtendedDates(baseDates);
+    extendedDates = generateExtendedDates(baseDates, forecastWeeks);
 
     // Compute model baselines (center) from fitted reference equations
     const btcBaseline = computeModelSeries(extendedDates.length, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
@@ -477,6 +486,40 @@ function createChart() {
 
     // Create halving annotations
     const halvingAnnotations = {};
+
+    // Forecast-zone annotations: shaded box from today to the last forecast date,
+    // plus a vertical "Today" line. Only drawn when forecast is enabled.
+    if (forecastWeeks > 0 && extendedDates.length > 0) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const lastForecastDate = extendedDates[extendedDates.length - 1];
+        halvingAnnotations.forecastZone = {
+            type: 'box',
+            xMin: todayStr,
+            xMax: lastForecastDate,
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            borderWidth: 0,
+            drawTime: 'beforeDatasetsDraw'
+        };
+        halvingAnnotations.todayLine = {
+            type: 'line',
+            scaleID: 'x',
+            value: todayStr,
+            borderColor: 'rgba(255, 255, 255, 0.7)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            label: {
+                content: 'Today',
+                enabled: true,
+                position: 'start',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                color: 'white',
+                font: { size: 11 },
+                rotation: 270,
+                yAdjust: -60
+            }
+        };
+    }
+
     halvingDates.forEach((halving, index) => {
         halvingAnnotations[`halving${index}`] = {
             type: 'line',
@@ -628,6 +671,26 @@ function createChart() {
                     ticks: {
                         callback: function(value) {
                             return '$' + value.toLocaleString('en-US');
+                        }
+                    }
+                },
+                yRight: {
+                    type: 'logarithmic',
+                    position: 'right',
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('en-US');
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    // Mirror the left y-axis range so both sides show identical ticks.
+                    afterDataLimits: function(scale) {
+                        const left = scale.chart.scales.y;
+                        if (left && Number.isFinite(left.min) && Number.isFinite(left.max)) {
+                            scale.min = left.min;
+                            scale.max = left.max;
                         }
                     }
                 }
@@ -808,6 +871,16 @@ function setupToggles() {
         chart.update();
     });
 
+    const forecastToggle = document.getElementById('showForecast');
+    if (forecastToggle) {
+        forecastToggle.addEventListener('change', function(e) {
+            const caption = document.getElementById('forecastCaption');
+            if (caption) caption.hidden = !e.target.checked;
+            // Dates and band geometry change; rebuild the chart from scratch.
+            rebuildChart();
+        });
+    }
+
     // Time range buttons
     document.querySelectorAll('.zoom-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -821,8 +894,11 @@ function setupToggles() {
 
             const range = this.dataset.range;
             const today = new Date();
+            const forecastOn = !!(document.getElementById('showForecast') && document.getElementById('showForecast').checked);
             let minDate = null;
-            let maxDate = today; // Default to today to avoid showing future data
+            // Default to today to avoid showing future data, unless forecast is on:
+            // then extend the right edge to today + 1 year so projected bands are visible.
+            let maxDate = forecastOn ? new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()) : today;
 
             // Calculate halving-based ranges
             // Average time between halvings is ~4 years (1460 days)

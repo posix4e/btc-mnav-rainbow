@@ -394,6 +394,15 @@ input[type="checkbox"] {
     color: #ffd700;
 }
 
+.forecast-caption {
+    text-align: center;
+    font-size: 0.9em;
+    color: #4a5568;
+    opacity: 0.85;
+    margin: 8px 16px 0;
+    font-style: italic;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     h1 {

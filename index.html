@@ -109,6 +109,10 @@
             </div>
         </div>
 
+        <p id="forecastCaption" class="forecast-caption" hidden>
+            Bands past the &ldquo;Today&rdquo; line are the fitted log-regression model evaluated 52 weeks forward &mdash; they show where each band would sit if the historical curve continues, not a prediction of price.
+        </p>
+
         <div class="controls">
             <div class="toggle-group">
                 <input type="checkbox" id="showSpot" checked>
@@ -125,6 +129,10 @@
             <div class="toggle-group">
                 <input type="checkbox" id="showHalvings" checked>
                 <label for="showHalvings">Halving Lines</label>
+            </div>
+            <div class="toggle-group">
+                <input type="checkbox" id="showForecast">
+                <label for="showForecast">Forecast +1Y</label>
             </div>
         </div>
 
@@ -211,6 +219,11 @@
             <div class="insight-card">
                 <h3>🔄 The Reflexive Cycle</h3>
                 <p>Higher MSTR price → Issue more converts → Buy more BTC → BTC price rises → MSTR premium expands → Higher MSTR price. This reflexive loop accelerates during bull markets, creating the exponential moves that match historical rainbow patterns even when spot markets are more mature and less volatile.</p>
+            </div>
+
+            <div class="insight-card">
+                <h3>🔮 About the 1-Year Forecast</h3>
+                <p>Toggling &ldquo;Forecast +1Y&rdquo; extends the rainbow bands 52 weeks forward by evaluating the same fitted regression &mdash; price = exp(a&middot;ln(b+x) + c) &mdash; at future week indices. The bands' colors and spacing don't change; only the x-axis extends. This shows where each band (HODL, FOMO, Max Bubble) will be located if Bitcoin's long-term log-trend continues. It is <strong>not</strong> a price forecast &mdash; actual spot price can land anywhere within or outside these bands, and the model itself is re-fit as new data arrives.</p>
             </div>
         </div>
     </div>
