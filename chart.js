@@ -8,6 +8,10 @@ const referenceRainbowHex = [
 ];
 
 function hexToRgba(hex, alpha) {
+  if (hex.startsWith('rgb')) {
+    const m = hex.match(/\d+/g);
+    if (m && m.length >= 3) return `rgba(${m[0]},${m[1]},${m[2]},${alpha})`;
+  }
   const h = hex.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
@@ -27,6 +31,39 @@ const halvingDates = [
 const BTC_COLOR = '#ff8c00';
 const MNAV_COLOR = '#9050ff';
 
+// Halving-peak rainbow: red ~15 months after halving (traditional peak), not at halving itself
+const rainbowSpectrum = [
+  { r: 255, g: 0, b: 0 }, { r: 255, g: 127, b: 0 }, { r: 255, g: 255, b: 0 },
+  { r: 0, g: 255, b: 0 }, { r: 0, g: 0, b: 255 }, { r: 75, g: 0, b: 130 },
+  { r: 148, g: 0, b: 211 }, { r: 255, g: 0, b: 0 },
+];
+function interpolateColor(c1, c2, f) {
+  return `rgb(${Math.round(c1.r + (c2.r - c1.r) * f)},${Math.round(c1.g + (c2.g - c1.g) * f)},${Math.round(c1.b + (c2.b - c1.b) * f)})`;
+}
+function getHalvingColor(dateStr) {
+  const date = new Date(dateStr);
+  let startDate, endDate;
+  if (date < new Date(halvingDates[0].date)) {
+    startDate = new Date('2009-01-03'); endDate = new Date(halvingDates[0].date);
+  } else {
+    for (let i = 0; i < halvingDates.length - 1; i++) {
+      if (date >= new Date(halvingDates[i].date) && date < new Date(halvingDates[i + 1].date)) {
+        startDate = new Date(halvingDates[i].date); endDate = new Date(halvingDates[i + 1].date); break;
+      }
+    }
+    if (!startDate && date >= new Date(halvingDates[halvingDates.length - 1].date)) {
+      startDate = new Date(halvingDates[halvingDates.length - 1].date);
+      endDate = new Date(startDate); endDate.setFullYear(endDate.getFullYear() + 4);
+    }
+  }
+  if (!startDate || !endDate) return 'rgb(255,140,0)';
+  const progress = Math.max(0, Math.min(1, (date - startDate) / (endDate - startDate)));
+  // shift so red peaks ~0.35 of cycle (15mo/4y) after halving
+  const shifted = (progress + 0.65) % 1;
+  const idx = shifted * (rainbowSpectrum.length - 1);
+  const base = Math.floor(idx), next = Math.min(base + 1, rainbowSpectrum.length - 1);
+  return interpolateColor(rainbowSpectrum[base], rainbowSpectrum[next], idx - base);
+}
 // Live data: try dailysatprice at view time, fall back to baked data.js (no republish needed).
 const LIVE_BTC_CSV = 'https://dailysatprice.com/data/latest.csv';
 const LIVE_BTC_WEEKLY_JSON = 'https://dailysatprice.com/data/weekly.json'; // ~30x smaller, pre-bucketed Mondays (added in fetch_btc_data.py patch)
@@ -70,6 +107,23 @@ function parseBtcCsv(text) {
   }
   return toMondayWeekly(rows);
 }
+function parseBtcCsvDaily(text) {
+  const lines = text.trim().split('\n');
+  if (!lines.length) return [];
+  const header = lines[0].toLowerCase();
+  const hasHash = header.includes('# date');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const [a, b] = line.split(',');
+    const date = hasHash ? a.replace(/^"#?\s*/, '').replace(/"$/, '').replace('# ', '').trim() : a.trim().replace(/^"|"$/g, '');
+    const price = parseFloat(b);
+    if (date && price > 0) rows.push({ date, price });
+  }
+  rows.sort((a,b)=>a.date.localeCompare(b.date));
+  return rows;
+}
 function linRegressXY(X, Y) {
   const n = Math.min(X.length, Y.length);
   if (!n) return { slope: 0, intercept: 0 };
@@ -108,42 +162,42 @@ async function loadData() {
   let bakedMnav = typeof mnavHistoricalData !== 'undefined' ? mnavHistoricalData : [];
   let bakedModel = typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null;
 
-  // Try live BTC — weekly.json first (small, pre-bucketed), then full CSV.
-  let liveWeekly = null;
+  // Live BTC: daily (no weekly bucket) so 2026-08-10 and latest daily show. Fall back to weekly.json only if daily fails.
+  let liveDaily = null;
   try {
-    const r = await fetch(LIVE_BTC_WEEKLY_JSON, { cache: 'no-store' });
-    if (r.ok) {
-      const arr = await r.json();
-      if (Array.isArray(arr) && arr.length > 10 && arr[0].date && arr[0].price) {
-        // already Monday-weekly
-        liveWeekly = arr.map((o) => ({ date: String(o.date).slice(0,10), price: Number(o.price) })).filter((o) => o.price > 0);
-        console.log(`[live] weekly.json: ${liveWeekly.length} weeks`);
-      }
-    }
+    const res = await fetch(LIVE_BTC_CSV, { cache: 'no-store' });
+    if (res.ok) liveDaily = parseBtcCsvDaily(await res.text());
+    if (liveDaily) console.log(`[live] daily CSV: ${liveDaily.length} days, last ${liveDaily[liveDaily.length-1]?.date}`);
   } catch (e) {
-    console.log('[live] weekly.json fetch failed', e?.message || e);
+    console.log('[live] daily CSV fetch failed', e?.message || e);
   }
-  if (!liveWeekly) {
+  if (!liveDaily || liveDaily.length < 10) {
     try {
-      const res = await fetch(LIVE_BTC_CSV, { cache: 'no-store' });
-      if (res.ok) liveWeekly = parseBtcCsv(await res.text());
+      const r = await fetch(LIVE_BTC_WEEKLY_JSON, { cache: 'no-store' });
+      if (r.ok) {
+        const arr = await r.json();
+        if (Array.isArray(arr) && arr.length > 10) {
+          liveDaily = arr.map((o) => ({ date: String(o.date).slice(0,10), price: Number(o.price) })).filter((o) => o.price > 0);
+          console.log(`[live] weekly.json fallback: ${liveDaily.length} weeks`);
+        }
+      }
     } catch (e) {
-      console.log('[live] CSV fetch failed', e?.message || e);
+      console.log('[live] weekly.json fallback failed', e?.message || e);
     }
   }
-  if (liveWeekly && liveWeekly.length > 10) {
-    const liveLast = liveWeekly[liveWeekly.length - 1]?.date;
+  if (liveDaily && liveDaily.length > 10) {
+    const liveLast = liveDaily[liveDaily.length - 1]?.date;
     const bakedLast = bakedBtc[bakedBtc.length - 1]?.date;
-    if (!bakedLast || liveLast > bakedLast || liveWeekly.length !== bakedBtc.length) {
-      bakedBtc = liveWeekly;
+    if (!bakedLast || liveLast > bakedLast || liveDaily.length !== bakedBtc.length) {
+      bakedBtc = liveDaily;
       const liveModel = fitRainbowModelLive(bakedBtc);
       if (liveModel) bakedModel = liveModel;
-      console.log(`[live] BTC updated from dailysatprice: ${liveWeekly.length} weekly, last ${liveLast}`);
+      console.log(`[live] BTC updated daily: ${liveDaily.length} points, last ${liveLast}`);
     } else {
       console.log(`[live] BTC fresh but not newer (${liveLast} vs ${bakedLast}) — using baked`);
     }
-  } else if (liveWeekly) {
-    console.log('[live] weekly data too short, using baked');
+  } else if (liveDaily) {
+    console.log('[live] daily data too short, using baked');
   } else {
     console.log('[live] no live BTC, using baked data.js');
   }
@@ -251,6 +305,13 @@ function createChart() {
       tension: 0.15,
       order: 1,
       spanGaps: true,
+      segment: {
+        borderColor: (ctx) => {
+          const idx = ctx.p0DataIndex;
+          const d = dates[idx];
+          return d ? getHalvingColor(d) : BTC_COLOR;
+        },
+      },
     },
     {
       label: 'MSTR MNAV',
@@ -258,7 +319,6 @@ function createChart() {
       borderColor: MNAV_COLOR,
       backgroundColor: 'transparent',
       borderWidth: 2,
-      borderDash: [0, 0],
       pointRadius: 0,
       tension: 0.15,
       order: 2,
