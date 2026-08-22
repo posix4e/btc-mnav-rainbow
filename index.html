@@ -3,102 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Rainbow Chart: Spot vs MSTR MNAV</title>
-
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="BTC MNAV Rainbow Chart - Interactive MicroStrategy Premium Calculator">
-    <meta name="description" content="Visualize Bitcoin's rainbow bands alongside MicroStrategy's MNAV premium. Interactive calculator shows how debt and preferred stock affect the true enterprise value ratio.">
-
-    <!-- Open Graph / Facebook -->
+    <title>Strategy Rainbow — BTC vs MSTR MNAV</title>
+    <meta name="description" content="Bitcoin rainbow bands with MicroStrategy MNAV-adjusted price. Spot price vs enterprise-value premium on one log chart.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://strategyrainbow.com/">
-    <meta property="og:title" content="BTC MNAV Rainbow Chart - Interactive MicroStrategy Premium Calculator">
-    <meta property="og:description" content="Visualize Bitcoin's rainbow bands alongside MicroStrategy's MNAV premium. Interactive calculator shows how debt and preferred stock affect the true enterprise value ratio.">
+    <meta property="og:title" content="Strategy Rainbow — BTC vs MSTR MNAV">
+    <meta property="og:description" content="Bitcoin rainbow bands with MicroStrategy MNAV-adjusted price.">
     <meta property="og:image" content="https://strategyrainbow.com/preview.png">
-
-    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://strategyrainbow.com/">
-    <meta property="twitter:title" content="BTC MNAV Rainbow Chart">
-    <meta property="twitter:description" content="Interactive chart comparing Bitcoin spot price to MicroStrategy's MNAV-adjusted price with component toggles">
+    <meta property="twitter:title" content="Strategy Rainbow">
+    <meta property="twitter:description" content="Bitcoin rainbow bands with MicroStrategy MNAV-adjusted price.">
     <meta property="twitter:image" content="https://strategyrainbow.com/preview.png">
-
-    <!-- Additional SEO -->
-    <meta name="keywords" content="Bitcoin, MSTR, MicroStrategy, MNAV, Rainbow Chart, BTC, Cryptocurrency, Michael Saylor">
-    <meta name="author" content="posix4e">
-    <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://strategyrainbow.com/">
-
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
     <script src="data.js"></script>
     <script src="chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>🌈 Bitcoin Rainbow Chart</h1>
-        <p class="subtitle">Comparing BTC Spot Price vs MSTR MNAV-Adjusted Price</p>
-
-        <div class="key-insight" style="margin: 30px 0;">
-            <h3>🔑 Why This Chart Matters</h3>
-            <p>Bitcoin's spot price peaked at the yellow "HODL" band this cycle—well below the red "bubble" zone of previous cycles. But MicroStrategy's MNAV price reached the red zone, hitting those same euphoric levels. The gains didn't disappear; they shifted to MSTR's leveraged premium.</p>
-            <p class="formula">
-                <strong>The Pattern:</strong> Bitcoin cycles still deliver 10-20x returns, but now through two channels:<br>
-                • Spot price: 3-4x gain<br>
-                • MSTR premium: Additional 3-5x multiplier<br>
-                • Combined: Same rainbow targets as previous cycles
-            </p>
-        </div>
+        <header class="header">
+            <h1>Strategy Rainbow</h1>
+            <p class="subtitle">Bitcoin spot price vs MSTR MNAV-adjusted price on the rainbow bands &middot; <a href="about.html">About</a></p>
+        </header>
 
         <div class="chart-container">
             <div class="chart-wrapper">
                 <canvas id="rainbowChart"></canvas>
             </div>
-
             <div class="chart-sidebar">
                 <div class="rainbow-key">
                     <div class="key-title">Rainbow Bands</div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #c00200;"></div>
-                        <span>Max bubble</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #d64018;"></div>
-                        <span>SELL!</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #ed7d31;"></div>
-                        <span>FOMO</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #f6b45a;"></div>
-                        <span>Bubble?</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #feeb84;"></div>
-                        <span>HODL</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #b1d580;"></div>
-                        <span>Cheap</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #63be7b;"></div>
-                        <span>Accumulate</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #54989f;"></div>
-                        <span>BUY!</span>
-                    </div>
-                    <div class="key-item">
-                        <div class="key-color" style="background: #4472c4;"></div>
-                        <span>Fire sale</span>
-                    </div>
+                    <div class="key-item"><div class="key-color" style="background:#c00200"></div><span>Max bubble</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#d64018"></div><span>SELL!</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#ed7d31"></div><span>FOMO</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#f6b45a"></div><span>Bubble?</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#feeb84"></div><span>HODL</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#b1d580"></div><span>Cheap</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#63be7b"></div><span>Accumulate</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#54989f"></div><span>BUY!</span></div>
+                    <div class="key-item"><div class="key-color" style="background:#4472c4"></div><span>Fire sale</span></div>
                 </div>
-
                 <div class="zoom-controls">
                     <div class="key-title">Time Range</div>
                     <button class="zoom-btn active" data-range="ALL">All</button>
@@ -109,130 +56,28 @@
             </div>
         </div>
 
-        <p id="forecastCaption" class="forecast-caption" hidden>
-            Bands past the &ldquo;Today&rdquo; line are the fitted log-regression model evaluated 52 weeks forward &mdash; they show where each band would sit if the historical curve continues, not a prediction of price.
-        </p>
+        <p class="caption">Bands are a fitted log-regression — they show where each band sits if the long-term trend continues, not a price forecast. <a href="about.html">Learn more</a></p>
 
         <div class="controls">
-            <div class="toggle-group">
+            <label class="toggle">
                 <input type="checkbox" id="showSpot" checked>
-                <label for="showSpot">BTC Spot Price</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showNaiveMNAV" checked>
-                <label for="showNaiveMNAV">Naive MNAV</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showSpotRainbow" checked>
-                <label for="showSpotRainbow">Rainbow Bands</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showHalvings" checked>
-                <label for="showHalvings">Halving Lines</label>
-            </div>
-            <div class="toggle-group">
-                <input type="checkbox" id="showForecast">
-                <label for="showForecast">Forecast +1Y</label>
-            </div>
-        </div>
-
-        <div class="controls" style="margin-top: 10px; background: rgba(100, 100, 100, 0.1); padding: 10px; border-radius: 8px;">
-            <div style="font-weight: bold; margin-bottom: 10px;">Custom MNAV Components:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <div class="toggle-group" style="background: rgba(255, 99, 132, 0.1);">
-                    <input type="checkbox" id="includeDebt" checked>
-                    <label for="includeDebt">+ Debt</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(54, 162, 235, 0.1);">
-                    <input type="checkbox" id="includeSTRC" checked>
-                    <label for="includeSTRC">+ STRC</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(255, 206, 86, 0.1);">
-                    <input type="checkbox" id="includeSTRD" checked>
-                    <label for="includeSTRD">+ STRD</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(75, 192, 192, 0.1);">
-                    <input type="checkbox" id="includeSTRF" checked>
-                    <label for="includeSTRF">+ STRF</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(153, 102, 255, 0.1);">
-                    <input type="checkbox" id="includeSTRK" checked>
-                    <label for="includeSTRK">+ STRK</label>
-                </div>
-            </div>
-            <div class="toggle-group" style="margin-top: 10px;">
-                <input type="checkbox" id="showCustomMNAV" checked>
-                <label for="showCustomMNAV">Show Custom MNAV</label>
-            </div>
-        </div>
-
-        <div class="controls" id="cycleOverlayControls" style="margin-top: 10px; background: rgba(70, 130, 180, 0.1); padding: 10px; border-radius: 8px; display: none;">
-            <div style="font-weight: bold; margin-bottom: 10px;">🔄 Cycle Comparison</div>
-            <div style="font-size: 0.9em; margin-bottom: 10px; opacity: 0.8;">Overlays previous cycles aligned by days since their halving</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <div class="toggle-group" style="background: rgba(255, 140, 0, 0.1);">
-                    <input type="checkbox" id="showCycle1">
-                    <label for="showCycle1">1st Cycle (2012)</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(255, 215, 0, 0.1);">
-                    <input type="checkbox" id="showCycle2">
-                    <label for="showCycle2">2nd Cycle (2016)</label>
-                </div>
-                <div class="toggle-group" style="background: rgba(0, 206, 209, 0.1);">
-                    <input type="checkbox" id="showCycle3">
-                    <label for="showCycle3">3rd Cycle (2020)</label>
-                </div>
-            </div>
+                <span class="toggle-dot" style="background:#ff8c00"></span>
+                BTC Spot
+            </label>
+            <label class="toggle">
+                <input type="checkbox" id="showMNAV" checked>
+                <span class="toggle-dot" style="background:#9050ff"></span>
+                MSTR MNAV
+            </label>
         </div>
 
         <div class="stats" id="stats"></div>
 
-    <div class="explainer">
-        <h2>📈 Why MNAV Rainbow Bands Match Historical Cycles Better</h2>
-
-        <div class="insight-grid">
-            <div class="insight-card">
-                <h3>🎯 The Pattern Recognition</h3>
-                <p>While Bitcoin's spot price peaked at ~$105K in this cycle (below the rainbow's red "bubble" zone), the MSTR MNAV-adjusted price reached $160K+, touching the euphoric bands that previous cycles achieved. The reward didn't disappear—it was delivered through a different channel: corporate leverage.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>⚙️ The Halving Effect</h3>
-                <p>Bitcoin halvings historically trigger 10-20x price movements within 12-18 months. In 2024, the spot price "only" achieved 3-4x, but MSTR's leveraged structure captured the missing multiplier through premium expansion, maintaining the rainbow pattern's predictive power.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>🏢 Corporate Arbitrage</h3>
-                <p>MicroStrategy discovered how to "front-run" Bitcoin cycles using corporate finance tools: convertible debt at 0.625% to buy an asset appreciating 50%+ annually. This leverage amplifies the underlying Bitcoin movements, creating synthetic exposure that follows historical rainbow patterns.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>🌊 The Liquidity Channel</h3>
-                <p>As Bitcoin becomes institutionalized, direct spot purchases face liquidity constraints. MSTR provides an alternative liquidity channel where institutional capital can express bullish views without moving the spot market, explaining why MNAV premiums expand during anticipated cycle peaks.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>📊 The Volatility Premium</h3>
-                <p>MSTR implied volatility (71%) exceeds Bitcoin's (45%) significantly. Options traders pay premium for this amplified volatility, which gets reflected in the stock price. This "vol premium" pushes MNAV-adjusted prices into rainbow bands that spot prices can't reach due to market depth limitations.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>🔄 The Reflexive Cycle</h3>
-                <p>Higher MSTR price → Issue more converts → Buy more BTC → BTC price rises → MSTR premium expands → Higher MSTR price. This reflexive loop accelerates during bull markets, creating the exponential moves that match historical rainbow patterns even when spot markets are more mature and less volatile.</p>
-            </div>
-
-            <div class="insight-card">
-                <h3>🔮 About the 1-Year Forecast</h3>
-                <p>Toggling &ldquo;Forecast +1Y&rdquo; extends the rainbow bands 52 weeks forward by evaluating the same fitted regression &mdash; price = exp(a&middot;ln(b+x) + c) &mdash; at future week indices. The bands' colors and spacing don't change; only the x-axis extends. This shows where each band (HODL, FOMO, Max Bubble) will be located if Bitcoin's long-term log-trend continues. It is <strong>not</strong> a price forecast &mdash; actual spot price can land anywhere within or outside these bands, and the model itself is re-fit as new data arrives.</p>
-            </div>
-        </div>
-    </div>
-    <footer style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-        <p style="margin: 0; color: rgba(255, 255, 255, 0.6);">
-            <a href="https://github.com/posix4e/btc-mnav-rainbow" target="_blank" rel="noopener noreferrer" style="color: #4472c4; text-decoration: none;">View on GitHub</a>
-        </p>
-    </footer>
-
+        <footer class="footer">
+            <a href="https://github.com/posix4e/btc-mnav-rainbow" target="_blank" rel="noopener">View on GitHub</a>
+            <span class="sep">·</span>
+            <a href="about.html">About / Methodology</a>
+        </footer>
     </div>
 </body>
 </html>

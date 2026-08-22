@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — Strategy Rainbow</title>
+  <meta name="description" content="How the Strategy Rainbow chart works: BTC halving, MNAV premium, rainbow bands.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <h1><a href="index.html" style="color:inherit;text-decoration:none">Strategy Rainbow</a></h1>
+    <p class="subtitle"><a href="index.html">← Back to chart</a></p>
+  </header>
+
+  <div class="about">
+    <h2>What this chart shows</h2>
+    <p><strong>BTC Spot</strong> is the weekly Monday price from <a href="https://dailysatprice.com">dailysatprice.com</a> (2013 → today, CoinGecko source, daily → weekly Monday bucket).</p>
+    <p><strong>MSTR MNAV-adjusted price</strong> = <span class="mono">MNAV × BTC spot</span> where <span class="mono">MNAV = (Market Cap + Debt + Preferred) / BTC NAV</span>. Uses the <code>MSTR.csv</code> and <code>STR*.csv</code> weekly snapshots. Weekly Monday bucket, same as BTC.</p>
+    <p><strong>Rainbow bands</strong> are a log-regression fit <span class="mono">price = exp(a·ln(b+x)+c)</span> evaluated at each week index <span class="mono">x</span>. Bands are that center line shifted in log space by <span class="mono">bandWidth=0.3</span> steps — same method as the classic Bitcoin rainbow chart. They show where each sentiment band (Fire sale → Max bubble) sits if the trend continues — not a price forecast.</p>
+
+    <div class="prose-box">
+      <h3 style="margin-top:0">Why MNAV follows the rainbow better this cycle</h3>
+      <p style="margin-bottom:0">Spot peaked around the yellow "HODL" band while MNAV touched red "bubble" levels — same historical 10–20× cycle return, now split across two channels: spot 3–4× plus MSTR premium 3–5× via convertible-debt-financed BTC accumulation.</p>
+    </div>
+
+    <h2>Halving markers</h2>
+    <p>Vertical lines at 2012-11-28, 2016-07-09, 2020-05-11, 2024-04-20, 2028-04-01 (est.). Time-range buttons are halving-relative (1.5H ≈ 6 years).</p>
+
+    <h2>Method &amp; caveats</h2>
+    <ul>
+      <li>All dates normalized to Monday of ISO week for exact BTC↔MNAV joining.</li>
+      <li>Log scale on Y axis; rainbow fit re-computed from full BTC history on each data build.</li>
+      <li>Holdings/debt/preferred are point-in-time; intraday stock moves make MNAV noisy — weekly bucket smooths it.</li>
+      <li>This is not investment advice.</li>
+    </ul>
+
+    <h2>Data &amp; updates</h2>
+    <p>BTC auto-fetches daily via GitHub Actions from <a href="https://dailysatprice.com/data/latest.csv">dailysatprice.com/data/latest.csv</a>. MSTR/STR CSVs currently manual from Strategy's site — easy to automate (see below). Site is static on GitHub Pages at <a href="https://strategyrainbow.com">strategyrainbow.com</a> — open source at <a href="https://github.com/posix4e/btc-mnav-rainbow">posix4e/btc-mnav-rainbow</a>.</p>
+
+    <div class="prose-box">
+      <h3 style="margin-top:0">Live without republishing?</h3>
+      <p>Today: BTC auto-deploys daily (still a Pages deploy). Since you own dailysatprice, we can make the chart fetch live: add <span class="mono">https://dailysatprice.com/data/weekly.json</span> (+ <span class="mono">/data/strategy.json</span> for MNAV) with CORS <span class="mono">Access-Control-Allow-Origin: *</span> — then <span class="mono">chart.js</span> fetches at view time with <span class="mono">data.js</span> as fallback. No deploy needed, visitors see today even before the workflow runs.</p>
+      <p style="margin-bottom:0">Ask to wire that and I’ll patch both repos — dailysatprice generates the JSON, strategyrainbow fetches it.</p>
+    </div>
+
+    <p><a href="index.html">← Back to chart</a> · <a href="https://github.com/posix4e/btc-mnav-rainbow">GitHub</a></p>
+  </div>
+
+  <footer class="footer">
+    <a href="https://github.com/posix4e/btc-mnav-rainbow" target="_blank" rel="noopener">View on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>

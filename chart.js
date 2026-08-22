@@ -1,988 +1,379 @@
 let chart = null;
 let btcData = [];
 let mnavData = [];
-let strData = {};
-let extendedDates = [];
 
-// Preset controls removed; model parameters come from data.js
-
-// Reference rainbow palette (bottom → top) from StephanAkkerman/bitcoin-rainbow-chart
 const referenceRainbowHex = [
-    '#4472c4', // Fire sale!
-    '#54989f', // BUY!
-    '#63be7b', // Accumulate
-    '#b1d580', // Still cheap
-    '#feeb84', // HODL!
-    '#f6b45a', // Is this a bubble?
-    '#ed7d31', // FOMO Intensifies
-    '#d64018', // Sell. Seriously, SELL!
-    '#c00200', // Maximum bubble territory
+  '#4472c4', '#54989f', '#63be7b', '#b1d580', '#feeb84',
+  '#f6b45a', '#ed7d31', '#d64018', '#c00200',
 ];
 
 function hexToRgba(hex, alpha) {
-    // Handle both hex and rgb formats
-    if (hex.startsWith('rgb')) {
-        // Extract RGB values from rgb(r, g, b) format
-        const matches = hex.match(/\d+/g);
-        if (matches && matches.length >= 3) {
-            return `rgba(${matches[0]}, ${matches[1]}, ${matches[2]}, ${alpha})`;
-        }
-    }
-    const h = hex.replace('#', '');
-    const r = parseInt(h.substring(0, 2), 16);
-    const g = parseInt(h.substring(2, 4), 16);
-    const b = parseInt(h.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
+const rainbowColors = referenceRainbowHex.map((hex) => hexToRgba(hex, 0.18));
 
-const rainbowColors = referenceRainbowHex.map((hex) => hexToRgba(hex, 0.2));
-
-// Rainbow band offsets are computed dynamically from bandWidth and bandCount
-
-// Bitcoin halving dates
 const halvingDates = [
-    { date: '2012-11-28', label: '1st Halving', blockReward: '25 BTC' },
-    { date: '2016-07-09', label: '2nd Halving', blockReward: '12.5 BTC' },
-    { date: '2020-05-11', label: '3rd Halving', blockReward: '6.25 BTC' },
-    { date: '2024-04-20', label: '4th Halving', blockReward: '3.125 BTC' },
-    { date: '2028-04-01', label: '5th Halving (Est.)', blockReward: '1.5625 BTC' }
+  { date: '2012-11-28', label: '1st Halving' },
+  { date: '2016-07-09', label: '2nd Halving' },
+  { date: '2020-05-11', label: '3rd Halving' },
+  { date: '2024-04-20', label: '4th Halving' },
+  { date: '2028-04-01', label: '5th Halving (Est.)' },
 ];
 
-// Rainbow color spectrum for smooth transitions
-// Starts at Red right after each halving
-const rainbowSpectrum = [
-    { r: 255, g: 0, b: 0 },      // Red - at halving
-    { r: 255, g: 127, b: 0 },    // Orange
-    { r: 255, g: 255, b: 0 },    // Yellow
-    { r: 0, g: 255, b: 0 },      // Green
-    { r: 0, g: 0, b: 255 },      // Blue
-    { r: 75, g: 0, b: 130 },     // Indigo
-    { r: 148, g: 0, b: 211 },    // Violet
-    { r: 255, g: 0, b: 0 }       // Red - returns to red at next halving
-];
+const BTC_COLOR = '#ff8c00';
+const MNAV_COLOR = '#9050ff';
 
-// Interpolate between two colors
-function interpolateColor(color1, color2, factor) {
-    const r = Math.round(color1.r + (color2.r - color1.r) * factor);
-    const g = Math.round(color1.g + (color2.g - color1.g) * factor);
-    const b = Math.round(color1.b + (color2.b - color1.b) * factor);
-    return `rgb(${r}, ${g}, ${b})`;
+// Live data: try dailysatprice at view time, fall back to baked data.js (no republish needed).
+const LIVE_BTC_CSV = 'https://dailysatprice.com/data/latest.csv';
+const LIVE_BTC_WEEKLY_JSON = 'https://dailysatprice.com/data/weekly.json'; // ~30x smaller, pre-bucketed Mondays (added in fetch_btc_data.py patch)
+// Optional: if you publish https://dailysatprice.com/data/strategy.json, wire it here:
+// const LIVE_STRATEGY_JSON = 'https://dailysatprice.com/data/strategy.json';
+
+function getISOWeek(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((utc - yearStart) / 86400000 + 1) / 7);
+  return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
-
-// Function to get rainbow color for a specific date based on halving cycle
-function getHalvingColor(dateStr) {
-    const date = new Date(dateStr);
-
-    // Find which halving period we're in
-    let startDate, endDate, periodIndex;
-
-    // Before first halving - genesis era
-    if (date < new Date(halvingDates[0].date)) {
-        startDate = new Date('2009-01-03'); // Bitcoin genesis block
-        endDate = new Date(halvingDates[0].date);
-        periodIndex = 0;
-    } else {
-        // Find the halving period
-        for (let i = 0; i < halvingDates.length - 1; i++) {
-            if (date >= new Date(halvingDates[i].date) && date < new Date(halvingDates[i + 1].date)) {
-                startDate = new Date(halvingDates[i].date);
-                endDate = new Date(halvingDates[i + 1].date);
-                periodIndex = i + 1;
-                break;
-            }
-        }
-
-        // After last known halving
-        if (!startDate && date >= new Date(halvingDates[halvingDates.length - 1].date)) {
-            startDate = new Date(halvingDates[halvingDates.length - 1].date);
-            // Estimate next halving ~4 years later
-            endDate = new Date(startDate);
-            endDate.setFullYear(endDate.getFullYear() + 4);
-            periodIndex = halvingDates.length;
-        }
-    }
-
-    if (!startDate || !endDate) {
-        return 'rgb(255, 159, 64)'; // Default orange
-    }
-
-    // Calculate progress through the halving period (0 to 1)
-    const totalTime = endDate - startDate;
-    const elapsed = date - startDate;
-    const progress = Math.max(0, Math.min(1, elapsed / totalTime));
-
-    // FULL RAINBOW CYCLE for each halving period
-    // Progress from 0 to 1 maps to full spectrum
-    const spectrumLength = rainbowSpectrum.length;
-    const colorIdx = progress * (spectrumLength - 1);
-
-    // Interpolate between adjacent colors in spectrum
-    const baseIdx = Math.floor(colorIdx);
-    const nextIdx = Math.min(baseIdx + 1, spectrumLength - 1);
-    const factor = colorIdx - baseIdx;
-
-    return interpolateColor(rainbowSpectrum[baseIdx], rainbowSpectrum[nextIdx], factor);
+function getMondayOfWeek(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() - dayNum + 1);
+  return utc.toISOString().split('T')[0];
 }
-
-// Function to create segmented dataset for halving-based coloring
-function createHalvingSegmentedDataset(data, label) {
-    const segments = [];
-    const segmentSize = 5; // Smaller segments for smoother color transitions
-    let currentSegment = [];
-    let currentSegmentIndices = [];
-
-    data.forEach((point, index) => {
-        if (point === null) {
-            // When we hit a null, save the current segment if it has data
-            if (currentSegment.length > 0) {
-                // Use the last data point's date for the segment color
-                const colorIndex = currentSegmentIndices[currentSegmentIndices.length - 1];
-                const date = extendedDates[colorIndex];
-                const color = getHalvingColor(date);
-
-                segments.push({
-                    data: [...currentSegment],
-                    color: color,
-                    startIdx: currentSegmentIndices[0],
-                    indices: [...currentSegmentIndices]
-                });
-
-                currentSegment = [];
-                currentSegmentIndices = [];
-            }
-            return;
-        }
-
-        currentSegment.push(point);
-        currentSegmentIndices.push(index);
-
-        // Create a new segment every segmentSize points or at the end
-        if (currentSegment.length >= segmentSize || index === data.length - 1) {
-            // Use the last data point's date for the segment color for smoother progression
-            const colorIndex = currentSegmentIndices[currentSegmentIndices.length - 1];
-            const date = extendedDates[colorIndex];
-            const color = getHalvingColor(date);
-
-            segments.push({
-                data: [...currentSegment],
-                color: color,
-                startIdx: currentSegmentIndices[0],
-                indices: [...currentSegmentIndices]
-            });
-
-            // Start new segment with overlap point for smooth transition
-            if (index < data.length - 1 && currentSegment.length > 0) {
-                currentSegment = [currentSegment[currentSegment.length - 1]];
-                currentSegmentIndices = [currentSegmentIndices[currentSegmentIndices.length - 1]];
-            } else {
-                currentSegment = [];
-                currentSegmentIndices = [];
-            }
-        }
-    });
-
-    // Convert segments to datasets with gradient effect
-    const datasets = [];
-
-    segments.forEach((segment, i) => {
-        const segmentData = new Array(extendedDates.length).fill(null);
-
-        // Fill in the data for this segment's range using stored indices
-        for (let j = 0; j < segment.data.length; j++) {
-            const idx = segment.indices ? segment.indices[j] : (segment.startIdx + j);
-            if (idx >= 0 && idx < segmentData.length) {
-                segmentData[idx] = segment.data[j];
-            }
-        }
-
-        datasets.push({
-            label: i === 0 ? label : '', // Only show label for first segment
-            data: segmentData,
-            borderColor: segment.color,
-            backgroundColor: hexToRgba(segment.color, 0.1),
-            borderWidth: 3,
-            fill: false,
-            pointRadius: 0,
-            tension: 0.1, // Add slight tension for smoother curves
-            order: 1,
-            spanGaps: true // Allow spanning small gaps between segments
-        });
-    });
-
-    return datasets;
+function toMondayWeekly(rows) {
+  const m = new Map();
+  for (const r of rows) m.set(getISOWeek(r.date), { ...r, date: getMondayOfWeek(r.date) });
+  return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+function parseBtcCsv(text) {
+  const lines = text.trim().split('\n');
+  if (!lines.length) return [];
+  const header = lines[0].toLowerCase();
+  const hasHash = header.includes('# date');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const [a, b] = line.split(',');
+    const date = hasHash ? a.replace(/^"#?\s*/, '').replace(/"$/, '').replace('# ', '').trim() : a.trim().replace(/^"|"$/g, '');
+    const price = parseFloat(b);
+    if (date && price > 0) rows.push({ date, price });
+  }
+  return toMondayWeekly(rows);
+}
+function linRegressXY(X, Y) {
+  const n = Math.min(X.length, Y.length);
+  if (!n) return { slope: 0, intercept: 0 };
+  let sumX = 0, sumY = 0, sumXX = 0, sumXY = 0;
+  for (let i = 0; i < n; i++) { sumX += X[i]; sumY += Y[i]; sumXX += X[i] * X[i]; sumXY += X[i] * Y[i]; }
+  const denom = (n * sumXX - sumX * sumX) || 1e-12;
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  return { slope, intercept: (sumY - slope * sumX) / n };
+}
+function fitRainbowModelLive(series) {
+  const clean = series.filter((d) => d && isFinite(d.price) && d.price > 0);
+  const n = clean.length;
+  if (n < 10) return null;
+  const x = clean.map((_, i) => i + 1);
+  const y = clean.map((d) => Math.log(d.price));
+  const bMax = Math.max(2000, Math.min(10000, n * 2));
+  let best = { b: 0, a: 0, c: 0, sse: Infinity };
+  function evalB(b) {
+    const X = x.map((v) => Math.log(b + v));
+    const { slope: a, intercept: c } = linRegressXY(X, y);
+    let sse = 0; for (let i = 0; i < n; i++) { const e = y[i] - (a * X[i] + c); sse += e * e; }
+    return { a, b, c, sse };
+  }
+  let step = (bMax - 0) / 100;
+  for (let b = 0; b <= bMax; b += step) { const r = evalB(b); if (r.sse < best.sse) best = r; }
+  for (let round = 0; round < 3; round++) {
+    const span = step * 2, left = Math.max(0, best.b - span), right = Math.min(bMax, best.b + span);
+    step = (right - left) / 50;
+    for (let b = left; b <= right; b += step) { const r = evalB(b); if (r.sse < best.sse) best = r; }
+  }
+  return { a: best.a, b: best.b, c: best.c, bandWidth: 0.3, numBands: 9, iDecrease: 1.5 };
 }
 
 async function loadData() {
-    // Use data from data.js
-    btcData = btcHistoricalData;
-    mnavData = mnavHistoricalData;
-    strData = typeof strHistoricalData !== 'undefined' ? strHistoricalData : {};
+  let bakedBtc = typeof btcHistoricalData !== 'undefined' ? btcHistoricalData : [];
+  let bakedMnav = typeof mnavHistoricalData !== 'undefined' ? mnavHistoricalData : [];
+  let bakedModel = typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null;
 
-    createChart();
-    updateStats();
-}
-
-/**
- * Generate cycle overlay data aligned by days since halving
- * Maps historical cycle data to current chart dates based on days from halving
- * @param {number} cycleIndex - Index of the cycle to overlay (0-2 for 1st-3rd halving)
- * @param {Array} chartDates - Array of dates currently displayed on chart
- * @returns {Object} Object with date->price mapping for overlay
- */
-function generateCycleOverlay(cycleIndex, chartDates) {
-    const cycleHalving = halvingDates[cycleIndex];
-    const currentHalving = halvingDates[3]; // 4th halving (2024-04-20)
-    const nextCycleHalving = halvingDates[cycleIndex + 1];
-
-    if (!cycleHalving || !currentHalving || !nextCycleHalving) return {};
-
-    const cycleStart = new Date(cycleHalving.date);
-    const currentHalvingDate = new Date(currentHalving.date);
-
-    // Find BTC price at the historical cycle's halving date
-    const cycleHalvingData = btcData.find(d => d.date === cycleHalving.date) ||
-                             btcData.find(d => new Date(d.date) >= cycleStart);
-    if (!cycleHalvingData) return {};
-    const cycleStartPrice = cycleHalvingData.price;
-
-    // Find BTC price at the current (4th) halving date
-    const currentHalvingData = btcData.find(d => d.date === currentHalving.date) ||
-                               btcData.find(d => new Date(d.date) >= currentHalvingDate);
-    if (!currentHalvingData) return {};
-    const currentStartPrice = currentHalvingData.price;
-
-    // Create a map of aligned dates to prices
-    const overlayMap = {};
-
-    // For each date in the chart, calculate the equivalent historical date
-    chartDates.forEach(chartDate => {
-        const currentDate = new Date(chartDate);
-        // Days from current halving (can be negative if before halving)
-        const daysFromCurrentHalving = Math.floor((currentDate - currentHalvingDate) / (1000 * 60 * 60 * 24));
-
-        // Calculate equivalent date in historical cycle
-        const historicalDate = new Date(cycleStart);
-        historicalDate.setDate(historicalDate.getDate() + daysFromCurrentHalving);
-        const historicalDateStr = historicalDate.toISOString().split('T')[0];
-
-        // Find historical BTC price for that date (or nearest date within 7 days)
-        let historicalData = btcData.find(d => d.date === historicalDateStr);
-
-        // If exact match not found, search for nearest date within +/- 7 days
-        if (!historicalData) {
-            const targetDate = new Date(historicalDateStr);
-            let closestData = null;
-            let minDiff = Infinity;
-
-            btcData.forEach(d => {
-                const dataDate = new Date(d.date);
-                const diff = Math.abs(dataDate - targetDate);
-                const daysDiff = diff / (1000 * 60 * 60 * 24);
-
-                // Only consider dates within 7 days
-                if (daysDiff <= 7 && diff < minDiff) {
-                    minDiff = diff;
-                    closestData = d;
-                }
-            });
-
-            historicalData = closestData;
-        }
-
-        if (historicalData && historicalData.price > 0) {
-            // Normalize price: scale historical cycle to start at current cycle's halving price
-            const normalizedPrice = (historicalData.price / cycleStartPrice) * currentStartPrice;
-            overlayMap[chartDate] = normalizedPrice;
-        }
-    });
-
-    return overlayMap;
-}
-
-function generateExtendedDates(dates, weeks = 0) {
-    const result = [...dates];
-    if (!weeks || dates.length === 0) return result;
-    const last = new Date(dates[dates.length - 1] + 'T00:00:00Z');
-    for (let i = 1; i <= weeks; i++) {
-        const d = new Date(last);
-        d.setUTCDate(d.getUTCDate() + i * 7);
-        result.push(d.toISOString().split('T')[0]);
+  // Try live BTC — weekly.json first (small, pre-bucketed), then full CSV.
+  let liveWeekly = null;
+  try {
+    const r = await fetch(LIVE_BTC_WEEKLY_JSON, { cache: 'no-store' });
+    if (r.ok) {
+      const arr = await r.json();
+      if (Array.isArray(arr) && arr.length > 10 && arr[0].date && arr[0].price) {
+        // already Monday-weekly
+        liveWeekly = arr.map((o) => ({ date: String(o.date).slice(0,10), price: Number(o.price) })).filter((o) => o.price > 0);
+        console.log(`[live] weekly.json: ${liveWeekly.length} weeks`);
+      }
     }
-    return result;
-}
-
-// Regression presets removed; using fitted reference model from data.js
-
-function generateRainbowBands(datesOrData, regression) {
-    const config = presetConfigs[currentPreset];
-    const bandCount = config.bandCount;
-    const bandWidth = config.bandWidth;
-
-    const bands = [];
-    const dates = Array.isArray(datesOrData)
-        ? (typeof datesOrData[0] === 'string' ? datesOrData : datesOrData.map(d => d.date))
-        : [];
-
-    // Generate band offsets based on configuration
-    const bandOffsets = [];
-    for (let i = 0; i < bandCount; i++) {
-        const offset = -bandWidth * (bandCount - 1) / 2 + i * bandWidth;
-        bandOffsets.push(offset);
+  } catch (e) {
+    console.log('[live] weekly.json fetch failed', e?.message || e);
+  }
+  if (!liveWeekly) {
+    try {
+      const res = await fetch(LIVE_BTC_CSV, { cache: 'no-store' });
+      if (res.ok) liveWeekly = parseBtcCsv(await res.text());
+    } catch (e) {
+      console.log('[live] CSV fetch failed', e?.message || e);
     }
-
-    for (let i = 0; i < bandOffsets.length; i++) {
-        const bandData = dates.map(date => {
-            // Use the regression's predict function to get the base price
-            const basePrice = regression.predict(date);
-            // Apply band offset in log space
-            const logBasePrice = Math.log10(basePrice);
-            const logBandPrice = logBasePrice + bandOffsets[i];
-            return Math.pow(10, logBandPrice);
-        });
-
-        if (i === 0) {
-            bands.push({
-                label: '',
-                data: bandData,
-                borderColor: 'transparent',
-                backgroundColor: 'transparent',
-                fill: false,
-                pointRadius: 0,
-                tension: 0,
-                order: 10 + i
-            });
-        }
-
-        // Map colors based on band position
-        const colorIndex = Math.floor(i * rainbowColors.length / bandCount);
-        bands.push({
-            label: '',
-            data: bandData,
-            borderColor: 'transparent',
-            backgroundColor: rainbowColors[Math.min(colorIndex, rainbowColors.length - 1)],
-            fill: i === 0 ? false : '-1',
-            pointRadius: 0,
-            tension: 0,
-            order: 10 + i
-        });
+  }
+  if (liveWeekly && liveWeekly.length > 10) {
+    const liveLast = liveWeekly[liveWeekly.length - 1]?.date;
+    const bakedLast = bakedBtc[bakedBtc.length - 1]?.date;
+    if (!bakedLast || liveLast > bakedLast || liveWeekly.length !== bakedBtc.length) {
+      bakedBtc = liveWeekly;
+      const liveModel = fitRainbowModelLive(bakedBtc);
+      if (liveModel) bakedModel = liveModel;
+      console.log(`[live] BTC updated from dailysatprice: ${liveWeekly.length} weekly, last ${liveLast}`);
+    } else {
+      console.log(`[live] BTC fresh but not newer (${liveLast} vs ${bakedLast}) — using baked`);
     }
+  } else if (liveWeekly) {
+    console.log('[live] weekly data too short, using baked');
+  } else {
+    console.log('[live] no live BTC, using baked data.js');
+  }
 
-    return bands;
-}
-
-function rebuildChart() {
-    if (chart) {
-        chart.destroy();
-    }
-    createChart();
+  btcData = bakedBtc;
+  mnavData = bakedMnav;
+  // stash model for createChart (overrides baked global)
+  window.__liveRainbowModelBTC = bakedModel;
+  createChart();
+  updateStats();
 }
 
 function computeModelSeries(length, model) {
-    if (!model) return Array.from({ length }, () => null);
-    const { a, b, c } = model;
-    const result = new Array(length);
-    for (let i = 0; i < length; i++) {
-        const x = i + 1; // 1..N like reference
-        const yhat = a * Math.log(b + x) + c;
-        result[i] = Math.exp(yhat);
-    }
-    return result;
-}
-
-// Create function to calculate custom MNAV based on selected components
-function calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includeSTRF, includeSTRK) {
-    const mnavItem = mnavData.find(m => m.date === date);
-    if (!mnavItem || !mnavItem.btcNav) return null;
-
-    let enterpriseValue = mnavItem.marketCap || 0;
-
-    if (includeDebt) {
-        enterpriseValue += mnavItem.debt || 0;
-    }
-
-    // Add individual STR components
-    if (includeSTRC && strData.STRC) {
-        const strItem = strData.STRC.find(s => s.date === date);
-        if (strItem) enterpriseValue += strItem.notional || 0;
-    }
-    if (includeSTRD && strData.STRD) {
-        const strItem = strData.STRD.find(s => s.date === date);
-        if (strItem) enterpriseValue += strItem.notional || 0;
-    }
-    if (includeSTRF && strData.STRF) {
-        const strItem = strData.STRF.find(s => s.date === date);
-        if (strItem) enterpriseValue += strItem.notional || 0;
-    }
-    if (includeSTRK && strData.STRK) {
-        const strItem = strData.STRK.find(s => s.date === date);
-        if (strItem) enterpriseValue += strItem.notional || 0;
-    }
-
-    const mnav = enterpriseValue / mnavItem.btcNav;
-    return mnav * mnavItem.spotPrice;
+  if (!model) return Array(length).fill(null);
+  const { a, b, c } = model;
+  const out = new Array(length);
+  for (let i = 0; i < length; i++) {
+    const x = i + 1;
+    out[i] = Math.exp(a * Math.log(b + x) + c);
+  }
+  return out;
 }
 
 function createChart() {
-    const ctx = document.getElementById('rainbowChart').getContext('2d');
+  const ctx = document.getElementById('rainbowChart').getContext('2d');
+  if (chart) chart.destroy();
 
-    // Build date axis from actual data, extending into the future if forecast is on
-    const forecastEl = document.getElementById('showForecast');
-    const forecastWeeks = (forecastEl && forecastEl.checked) ? 52 : 0;
-    const baseDates = btcData.map(d => d.date);
-    extendedDates = generateExtendedDates(baseDates, forecastWeeks);
+  const dates = btcData.map((d) => d.date);
+  const model = window.__liveRainbowModelBTC || (typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
+  const baseline = computeModelSeries(dates.length, model);
 
-    // Compute model baselines (center) from fitted reference equations
-    const btcBaseline = computeModelSeries(extendedDates.length, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null);
-
-    // Generate rainbow bands using reference band logic
-    function buildBands(baseline, model, orderBase) {
-        const bands = [];
-        if (!model || !baseline || baseline.length === 0) return bands;
-        const numBands = model.numBands || 9;
-        const bandWidth = model.bandWidth || 0.3;
-        const iDecrease = model.iDecrease != null ? model.iDecrease : 1.5;
-
-        // Helper to shift in log space
-        const lower0 = baseline.map(v => Math.exp(Math.log(v) + (0 - iDecrease) * bandWidth - bandWidth));
-        // Seed transparent lower baseline for first fill
-        bands.push({
-            label: '',
-            data: lower0,
-            borderColor: 'transparent',
-            backgroundColor: 'transparent',
-            fill: false,
-            pointRadius: 0,
-            tension: 0,
-            order: orderBase,
-        });
-        for (let i = 0; i < numBands; i++) {
-            const upper = baseline.map(v => Math.exp(Math.log(v) + (i - iDecrease) * bandWidth));
-            const colorIndex = Math.min(i, rainbowColors.length - 1);
-            bands.push({
-                label: '',
-                data: upper,
-                borderColor: 'transparent',
-                backgroundColor: rainbowColors[colorIndex],
-                fill: '-1',
-                pointRadius: 0,
-                tension: 0,
-                order: orderBase + 1 + i,
-            });
-        }
-        return bands;
+  // Build rainbow bands in log space: 9 bands around baseline
+  const bands = [];
+  if (model && baseline.length) {
+    const numBands = model.numBands || 9;
+    const bandWidth = model.bandWidth || 0.3;
+    const iDecrease = model.iDecrease ?? 1.5;
+    const lower0 = baseline.map((v) => Math.exp(Math.log(v) + (0 - iDecrease) * bandWidth - bandWidth));
+    bands.push({
+      label: '',
+      data: lower0,
+      borderColor: 'transparent',
+      backgroundColor: 'transparent',
+      fill: false,
+      pointRadius: 0,
+      tension: 0,
+      order: 10,
+    });
+    for (let i = 0; i < numBands; i++) {
+      const upper = baseline.map((v) => Math.exp(Math.log(v) + (i - iDecrease) * bandWidth));
+      bands.push({
+        label: '',
+        data: upper,
+        borderColor: 'transparent',
+        backgroundColor: rainbowColors[Math.min(i, rainbowColors.length - 1)],
+        fill: '-1',
+        pointRadius: 0,
+        tension: 0,
+        order: 10 + 1 + i,
+      });
     }
-    const btcRainbowBands = buildBands(btcBaseline, typeof rainbowModelBTC !== 'undefined' ? rainbowModelBTC : null, 10);
+  }
 
-    // Create aligned data for naive MSTR MNAV
-    const naiveMnavAlignedData = extendedDates.map(date => {
-        const mnavItem = mnavData.find(m => m.date === date);
-        return mnavItem ? mnavItem.naiveMnavAdjustedPrice : null;
-    });
+  const btcSpotData = dates.map((date) => {
+    const item = btcData.find((d) => d.date === date);
+    return item ? item.price : null;
+  });
 
-    // Create data for debt-only MNAV
-    const debtOnlyMnavData = extendedDates.map(date => {
-        return calculateCustomMnav(date, true, false, false, false, false);
-    });
+  const mnavAligned = dates.map((date) => {
+    const item = mnavData.find((m) => m.date === date);
+    if (!item) return null;
+    // Prefer advanced (EV) adjusted price, fall back to naive
+    return item.advancedMnavAdjustedPrice ?? item.naiveMnavAdjustedPrice ?? null;
+  });
 
-    // Create halving annotations
-    const halvingAnnotations = {};
+  const halvingAnnotations = {};
+  halvingDates.forEach((h, i) => {
+    halvingAnnotations[`halving${i}`] = {
+      type: 'line',
+      scaleID: 'x',
+      value: h.date,
+      borderColor: 'rgba(255,255,255,0.9)',
+      borderWidth: 1,
+      label: {
+        content: h.label,
+        enabled: true,
+        position: 'start',
+        backgroundColor: 'rgba(0,0,0,0.75)',
+        color: 'white',
+        font: { size: 10 },
+        rotation: 270,
+        yAdjust: -50,
+      },
+    };
+  });
 
-    // Forecast-zone annotations: shaded box from today to the last forecast date,
-    // plus a vertical "Today" line. Only drawn when forecast is enabled.
-    if (forecastWeeks > 0 && extendedDates.length > 0) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const lastForecastDate = extendedDates[extendedDates.length - 1];
-        halvingAnnotations.forecastZone = {
-            type: 'box',
-            xMin: todayStr,
-            xMax: lastForecastDate,
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            borderWidth: 0,
-            drawTime: 'beforeDatasetsDraw'
-        };
-        halvingAnnotations.todayLine = {
-            type: 'line',
-            scaleID: 'x',
-            value: todayStr,
-            borderColor: 'rgba(255, 255, 255, 0.7)',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            label: {
-                content: 'Today',
-                enabled: true,
-                position: 'start',
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                font: { size: 11 },
-                rotation: 270,
-                yAdjust: -60
-            }
-        };
-    }
+  const datasets = [
+    {
+      label: 'BTC Spot',
+      data: btcSpotData,
+      borderColor: BTC_COLOR,
+      backgroundColor: 'transparent',
+      borderWidth: 2.2,
+      pointRadius: 0,
+      tension: 0.15,
+      order: 1,
+      spanGaps: true,
+    },
+    {
+      label: 'MSTR MNAV',
+      data: mnavAligned,
+      borderColor: MNAV_COLOR,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [0, 0],
+      pointRadius: 0,
+      tension: 0.15,
+      order: 2,
+      spanGaps: true,
+    },
+    ...bands,
+  ];
 
-    halvingDates.forEach((halving, index) => {
-        halvingAnnotations[`halving${index}`] = {
-            type: 'line',
-            borderColor: 'white',
-            borderWidth: 1,
-            label: {
-                content: halving.label,
-                enabled: true,
-                position: 'start',
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                font: {
-                    size: 11
-                },
-                rotation: 270,
-                yAdjust: -60
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        annotation: { annotations: halvingAnnotations },
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              if (ctx.dataset.label === '') return null;
+              const v = ctx.parsed.y;
+              if (v == null) return null;
+              return `${ctx.dataset.label}: $${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             },
-            scaleID: 'x',
-            value: halving.date
-        };
-    });
-
-    // No trend lines in reference chart
-
-    // Prepare BTC spot data
-    const btcSpotData = extendedDates.map(date => {
-        const item = btcData.find(d => d.date === date);
-        return item ? item.price : null; // no future price
-    });
-
-    // Create datasets with halving-based rainbow coloring
-    let btcDatasets = createHalvingSegmentedDataset(btcSpotData, 'BTC Spot Price');
-
-    // Calculate initial custom MNAV data with all components enabled
-    const initialCustomData = extendedDates.map(date => {
-        return calculateCustomMnav(date, true, true, true, true, true);
-    });
-
-    const datasets = [
-        ...btcDatasets,
-        // MSTR Naive MNAV (Market Cap only)
-        {
-            label: 'MSTR Naive MNAV',
-            data: naiveMnavAlignedData,
-            borderColor: 'rgba(153, 102, 255, 0.5)',
-            backgroundColor: 'rgba(153, 102, 255, 0.05)',
-            borderWidth: 2,
-            borderDash: [5, 5],  // Dashed line for naive
-            fill: false,
-            pointRadius: 0,
-            tension: 0.2,
-            order: 2,
-            spanGaps: true
+          },
         },
-        // Custom MNAV (dynamically calculated)
-        {
-            label: 'Custom MNAV',
-            data: initialCustomData, // Start with all components enabled
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-            borderWidth: 2,
-            fill: false,
-            pointRadius: 0,
-            tension: 0.2,
-            order: 3,
-            spanGaps: true
-        }
-    ];
-
-    // Add rainbow bands
-    btcRainbowBands.forEach(band => {
-        band.hidden = false;
-        datasets.push(band);
-    });
-
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: extendedDates,
-            datasets: datasets
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { parser: 'yyyy-MM-dd', displayFormats: { year: 'yyyy' } },
+          title: { display: true, text: 'Date' },
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            plugins: {
-                annotation: {
-                    annotations: halvingAnnotations
-                },
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            // Check if this is a BTC spot segment (order === 1)
-                            if (context.dataset.order === 1) {
-                                let label = 'BTC Spot Price: $';
-                                if (context.parsed.y !== null) {
-                                    label += context.parsed.y.toLocaleString('en-US', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    });
-                                }
-                                return label;
-                            }
+        y: {
+          type: 'logarithmic',
+          title: { display: true, text: 'Price (USD) — log scale' },
+          ticks: {
+            callback(value) { return '$' + Number(value).toLocaleString('en-US'); },
+          },
+        },
+      },
+    },
+  });
 
-                            // Skip datasets with empty labels (rainbow bands)
-                            if (context.dataset.label === '') return null;
-
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': $';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y.toLocaleString('en-US', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                });
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    type: 'time',
-                    time: {
-                        parser: 'yyyy-MM-dd',
-                        displayFormats: {
-                            year: 'yyyy'
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Date'
-                    }
-                },
-                y: {
-                    type: 'logarithmic',
-                    title: {
-                        display: true,
-                        text: 'Price (USD) - Log Scale'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value.toLocaleString('en-US');
-                        }
-                    }
-                },
-                yRight: {
-                    type: 'logarithmic',
-                    position: 'right',
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value.toLocaleString('en-US');
-                        }
-                    },
-                    grid: {
-                        drawOnChartArea: false
-                    },
-                    // Mirror the left y-axis range so both sides show identical ticks.
-                    afterDataLimits: function(scale) {
-                        const left = scale.chart.scales.y;
-                        if (left && Number.isFinite(left.min) && Number.isFinite(left.max)) {
-                            scale.min = left.min;
-                            scale.max = left.max;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Setup toggles
-    setupToggles();
-
-    // Store original BTC data for toggle switching
-    chart.btcSpotData = btcSpotData;
+  setupToggles();
 }
 
 function setupToggles() {
-    document.getElementById('showSpot').addEventListener('change', function(e) {
-        // Handle multiple BTC datasets (rainbow segments)
-        // Find all BTC datasets by checking order = 1
-        chart.data.datasets.forEach(ds => {
-            if (ds.order === 1) {
-                ds.hidden = !e.target.checked;
-            }
-        });
-        chart.update();
+  const spotEl = document.getElementById('showSpot');
+  const mnavEl = document.getElementById('showMNAV');
+
+  if (spotEl) {
+    spotEl.addEventListener('change', (e) => {
+      const ds = chart.data.datasets.find((d) => d.label === 'BTC Spot');
+      if (ds) ds.hidden = !e.target.checked;
+      chart.update();
     });
-
-    document.getElementById('showNaiveMNAV').addEventListener('change', function(e) {
-        // Find Naive MNAV dataset by label
-        const naiveDataset = chart.data.datasets.find(ds => ds.label === 'MSTR Naive MNAV');
-        if (naiveDataset) {
-            naiveDataset.hidden = !e.target.checked;
-        }
-        chart.update();
+  }
+  if (mnavEl) {
+    mnavEl.addEventListener('change', (e) => {
+      const ds = chart.data.datasets.find((d) => d.label === 'MSTR MNAV');
+      if (ds) ds.hidden = !e.target.checked;
+      chart.update();
     });
+  }
 
-    document.getElementById('showCustomMNAV').addEventListener('change', function(e) {
-        // Find Custom MNAV dataset by label
-        const customDataset = chart.data.datasets.find(ds => ds.label === 'Custom MNAV');
-        if (customDataset) {
-            customDataset.hidden = !e.target.checked;
-        }
-        chart.update();
+  document.querySelectorAll('.zoom-btn').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      if (!chart) return;
+      document.querySelectorAll('.zoom-btn').forEach((b) => b.classList.remove('active'));
+      this.classList.add('active');
+
+      const range = this.dataset.range;
+      const today = new Date();
+      let minDate = null;
+      let maxDate = null;
+
+      const daysPerHalving = 1460;
+      switch (range) {
+        case '1.5H':
+          minDate = new Date(today); minDate.setDate(minDate.getDate() - 1.5 * daysPerHalving);
+          maxDate = today; break;
+        case '2.5H':
+          minDate = new Date(today); minDate.setDate(minDate.getDate() - 2.5 * daysPerHalving);
+          maxDate = today; break;
+        case '3.5H':
+          minDate = new Date(today); minDate.setDate(minDate.getDate() - 3.5 * daysPerHalving);
+          maxDate = today; break;
+        default:
+          minDate = null; maxDate = null;
+      }
+      chart.options.scales.x.min = minDate ? minDate.toISOString().split('T')[0] : undefined;
+      chart.options.scales.x.max = maxDate ? maxDate.toISOString().split('T')[0] : undefined;
+      chart.update('none');
     });
-
-    // Function to update custom MNAV based on selected components
-    function updateCustomMNAV() {
-        const includeDebt = document.getElementById('includeDebt').checked;
-        const includeSTRC = document.getElementById('includeSTRC').checked;
-        const includeSTRD = document.getElementById('includeSTRD').checked;
-        const includeSTRF = document.getElementById('includeSTRF').checked;
-        const includeSTRK = document.getElementById('includeSTRK').checked;
-
-        const customData = extendedDates.map(date => {
-            return calculateCustomMnav(date, includeDebt, includeSTRC, includeSTRD, includeSTRF, includeSTRK);
-        });
-
-        // Find Custom MNAV dataset by label and update its data
-        const customDataset = chart.data.datasets.find(ds => ds.label === 'Custom MNAV');
-        if (customDataset) {
-            customDataset.data = customData;
-        }
-        chart.update();
-    }
-
-    // Add event listeners for component checkboxes
-    ['includeDebt', 'includeSTRC', 'includeSTRD', 'includeSTRF', 'includeSTRK'].forEach(id => {
-        document.getElementById(id).addEventListener('change', updateCustomMNAV);
-    });
-
-    // Initialize custom MNAV with current checkbox state
-    updateCustomMNAV();
-
-    // Function to update cycle overlays
-    // All cycles are aligned to the 4th halving (2024-04-20) by days since halving
-    function updateCycleOverlays() {
-        const showCycle1 = document.getElementById('showCycle1').checked;
-        const showCycle2 = document.getElementById('showCycle2').checked;
-        const showCycle3 = document.getElementById('showCycle3').checked;
-
-        // Remove existing overlay datasets
-        chart.data.datasets = chart.data.datasets.filter(ds => !ds.isCycleOverlay);
-
-        // Get the currently visible date range from the chart
-        const xScale = chart.scales.x;
-        const minDate = xScale.min ? new Date(xScale.min) : new Date(extendedDates[0]);
-        const maxDate = xScale.max ? new Date(xScale.max) : new Date(extendedDates[extendedDates.length - 1]);
-
-        // Filter to only dates visible in current zoom
-        const visibleDates = extendedDates.filter(date => {
-            const d = new Date(date);
-            return d >= minDate && d <= maxDate;
-        });
-
-        console.log(`Visible date range: ${minDate.toISOString().split('T')[0]} to ${maxDate.toISOString().split('T')[0]} (${visibleDates.length} dates)`);
-
-        // Add new overlay datasets if checked
-        const overlays = [
-            { index: 0, show: showCycle1, label: '1st Cycle (2012)', color: 'rgb(255, 140, 0)' },
-            { index: 1, show: showCycle2, label: '2nd Cycle (2016)', color: 'rgb(255, 215, 0)' },
-            { index: 2, show: showCycle3, label: '3rd Cycle (2020)', color: 'rgb(0, 206, 209)' }
-        ];
-
-        overlays.forEach(overlay => {
-            if (overlay.show) {
-                const overlayMap = generateCycleOverlay(overlay.index, visibleDates);
-
-                // Map overlay data to chart dates using the date map
-                const mappedData = extendedDates.map(date => {
-                    return overlayMap[date] || null;
-                });
-
-                // Count non-null values and show date range for debugging
-                const nonNullCount = mappedData.filter(v => v !== null).length;
-                const firstNonNull = visibleDates.find(date => overlayMap[date] !== undefined);
-                const lastNonNull = visibleDates.slice().reverse().find(date => overlayMap[date] !== undefined);
-
-                const currentHalving = new Date(halvingDates[3].date);
-                const historicalHalving = new Date(halvingDates[overlay.index].date);
-
-                if (firstNonNull && lastNonNull) {
-                    const firstDate = new Date(firstNonNull);
-                    const lastDate = new Date(lastNonNull);
-                    const firstDays = Math.floor((firstDate - currentHalving) / (1000 * 60 * 60 * 24));
-                    const lastDays = Math.floor((lastDate - currentHalving) / (1000 * 60 * 60 * 24));
-
-                    const histFirstDate = new Date(historicalHalving);
-                    histFirstDate.setDate(histFirstDate.getDate() + firstDays);
-                    const histLastDate = new Date(historicalHalving);
-                    histLastDate.setDate(histLastDate.getDate() + lastDays);
-
-                    console.log(`${overlay.label}: ${nonNullCount} points | Chart: ${firstNonNull} to ${lastNonNull} (${firstDays} to ${lastDays} days from halving) | Historical: ${histFirstDate.toISOString().split('T')[0]} to ${histLastDate.toISOString().split('T')[0]}`);
-                } else {
-                    console.log(`${overlay.label}: ${nonNullCount} data points mapped`);
-                }
-
-                chart.data.datasets.push({
-                    label: overlay.label,
-                    data: mappedData,
-                    borderColor: overlay.color,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [8, 4],
-                    fill: false,
-                    pointRadius: 0,
-                    tension: 0.2,
-                    order: 4,
-                    spanGaps: true,
-                    isCycleOverlay: true
-                });
-            }
-        });
-
-        chart.update();
-    }
-
-    // Add event listeners for cycle overlay controls
-    document.getElementById('showCycle1').addEventListener('change', updateCycleOverlays);
-    document.getElementById('showCycle2').addEventListener('change', updateCycleOverlays);
-    document.getElementById('showCycle3').addEventListener('change', updateCycleOverlays);
-
-    document.getElementById('showSpotRainbow').addEventListener('change', function(e) {
-        // Hide/show all rainbow band datasets (order >= 10)
-        chart.data.datasets.forEach(ds => {
-            if (ds.order >= 10) {
-                ds.hidden = !e.target.checked;
-            }
-        });
-        chart.update();
-    });
-
-
-    document.getElementById('showHalvings').addEventListener('change', function(e) {
-        Object.keys(chart.options.plugins.annotation.annotations).forEach(key => {
-            if (key.startsWith('halving')) {
-                chart.options.plugins.annotation.annotations[key].display = e.target.checked;
-            }
-        });
-        chart.update();
-    });
-
-    const forecastToggle = document.getElementById('showForecast');
-    if (forecastToggle) {
-        forecastToggle.addEventListener('change', function(e) {
-            const caption = document.getElementById('forecastCaption');
-            if (caption) caption.hidden = !e.target.checked;
-            // Dates and band geometry change; rebuild the chart from scratch.
-            rebuildChart();
-        });
-    }
-
-    // Time range buttons
-    document.querySelectorAll('.zoom-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (!chart) {
-                console.error('Chart not initialized');
-                return;
-            }
-
-            document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-
-            const range = this.dataset.range;
-            const today = new Date();
-            const forecastOn = !!(document.getElementById('showForecast') && document.getElementById('showForecast').checked);
-            let minDate = null;
-            // Default to today to avoid showing future data, unless forecast is on:
-            // then extend the right edge to today + 1 year so projected bands are visible.
-            let maxDate = forecastOn ? new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()) : today;
-
-            // Calculate halving-based ranges
-            // Average time between halvings is ~4 years (1460 days)
-            const daysPerHalving = 1460;
-
-            switch(range) {
-                case '1.5H': // 1.5 halvings = ~6 years
-                    minDate = new Date(today);
-                    minDate.setDate(minDate.getDate() - (1.5 * daysPerHalving));
-                    break;
-                case '2.5H': // 2.5 halvings = ~10 years
-                    minDate = new Date(today);
-                    minDate.setDate(minDate.getDate() - (2.5 * daysPerHalving));
-                    break;
-                case '3.5H': // 3.5 halvings = ~14 years
-                    minDate = new Date(today);
-                    minDate.setDate(minDate.getDate() - (3.5 * daysPerHalving));
-                    break;
-                case 'ALL':
-                default:
-                    minDate = null;
-                    maxDate = null; // Show all data including future for ALL
-            }
-
-            if (minDate) {
-                chart.options.scales.x.min = minDate.toISOString().split('T')[0];
-            } else {
-                chart.options.scales.x.min = undefined;
-            }
-
-            if (maxDate) {
-                chart.options.scales.x.max = maxDate.toISOString().split('T')[0];
-            } else {
-                chart.options.scales.x.max = undefined;
-            }
-
-            // Show cycle overlay controls only on 1.5H zoom
-            const cycleControls = document.getElementById('cycleOverlayControls');
-            if (range === '1.5H') {
-                cycleControls.style.display = 'block';
-                updateCycleOverlays(); // Initialize overlays
-            } else {
-                cycleControls.style.display = 'none';
-                // Remove overlay datasets when leaving 1.5H view
-                chart.data.datasets = chart.data.datasets.filter(ds => !ds.isCycleOverlay);
-            }
-
-            chart.update('none'); // Use 'none' mode for immediate update
-        });
-    });
-
+  });
 }
 
 function updateStats() {
-    const latestBTC = btcData[btcData.length - 1];
-    const latestMNAV = mnavData[mnavData.length - 1];
+  if (!btcData.length || !mnavData.length) return;
+  const latestBTC = btcData[btcData.length - 1];
+  const latestMNAV = mnavData[mnavData.length - 1];
+  const mnavPct = latestMNAV.advancedMnav != null
+    ? (latestMNAV.advancedMnav * 100).toFixed(1) + '%'
+    : (latestMNAV.naiveMnav != null ? (latestMNAV.naiveMnav * 100).toFixed(1) + '%' : '—');
+  const premium = latestBTC.price ? (((latestMNAV.advancedMnavAdjustedPrice ?? latestMNAV.naiveMnavAdjustedPrice ?? 0) / latestBTC.price - 1) * 100).toFixed(1) + '%' : '—';
 
-    // Calculate custom MNAV for stats
-    const customMnav = calculateCustomMnav(latestMNAV.date, true, true, true, true, true);
-    const customMnavPercent = customMnav ? (customMnav / latestBTC.price * 100).toFixed(1) : 'N/A';
-
-    const statsHTML = `
-        <div class="stat-card">
-            <h3>Latest BTC Spot Price</h3>
-            <p>$${latestBTC.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
-        </div>
-        <div class="stat-card">
-            <h3>Naive MNAV</h3>
-            <p>${((latestMNAV.naiveMnav || 1) * 100).toFixed(1)}%</p>
-        </div>
-        <div class="stat-card">
-            <h3>Custom MNAV</h3>
-            <p>${customMnavPercent}%</p>
-        </div>
-        <div class="stat-card">
-            <h3>MSTR BTC Holdings</h3>
-            <p>${latestMNAV.btcHoldings.toLocaleString('en-US', { maximumFractionDigits: 0 })} BTC</p>
-        </div>
-    `;
-
-    document.getElementById('stats').innerHTML = statsHTML;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><h3>BTC Spot</h3><p>$${latestBTC.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p><small>${latestBTC.date}</small></div>
+    <div class="stat-card"><h3>MNAV (EV / BTC NAV)</h3><p>${mnavPct}</p><small>MSTR enterprise value</small></div>
+    <div class="stat-card"><h3>MNAV-Adjusted Price</h3><p>$${(latestMNAV.advancedMnavAdjustedPrice ?? latestMNAV.naiveMnavAdjustedPrice ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</p><small>${premium} vs spot</small></div>
+    <div class="stat-card"><h3>MSTR BTC Holdings</h3><p>${(latestMNAV.btcHoldings ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })} BTC</p><small>${latestMNAV.date}</small></div>
+  `;
 }
 
-// Load data when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-});
+document.addEventListener('DOMContentLoaded', loadData);
