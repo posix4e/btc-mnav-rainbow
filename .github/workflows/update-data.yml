@@ -9,7 +9,10 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 permissions:
-  contents: read
+  # write: the daily run commits the refreshed CSV. That commit is also what
+  # keeps the repo "active" so GitHub doesn't auto-disable this schedule after
+  # 60 days without commits (which is what froze the site on 2026-11-18).
+  contents: write
   pages: write
   id-token: write
 
@@ -40,6 +43,20 @@ jobs:
 
     - name: Fetch latest BTC data from dailysatprice.com
       run: npm run fetch-btc
+
+    - name: Commit refreshed BTC CSV
+      if: github.event_name != 'push'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+        git add dailysatprice_latest.csv
+        if git diff --cached --quiet; then
+          echo "No new BTC data"
+        else
+          # Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
+          git commit -m "updating daily data"
+          git push
+        fi
 
     - name: Generate data.js from CSV files
       run: npm run update-data
